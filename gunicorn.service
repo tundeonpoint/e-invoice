@@ -1,0 +1,14 @@
+[Unit]
+Description=e-invoice api
+After=network.target
+
+[Service]
+User=tunde
+Group=tunde
+WorkingDirectory=/home/tunde/e-invoice/app/src/
+Environment="PATH=/home/tunde/e-invoice/venv/bin"
+EnvironmentFile=/home/tunde/.env
+ExecStart=/home/tunde/e-invoice/venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000
+
+[Install]
+WantedBy=multi-user.target
