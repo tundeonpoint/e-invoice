@@ -1,6 +1,7 @@
 from pydantic import BaseModel,EmailStr,ConfigDict,Field
 from datetime import datetime,date
 from typing import Optional
+import json
 
 
 class Invoice(BaseModel):
@@ -198,6 +199,7 @@ class OrganisationCreate(BaseModel):
     telephone : str
     business_description : str
     zoho_org_id : str
+    address : dict
     # org_secret : str
 
 class OrganisationOut(BaseModel):
@@ -210,6 +212,7 @@ class OrganisationOut(BaseModel):
     telephone : str
     business_description : str
     zoho_org_id : str
+    address : dict
     org_secret_plain : str  
 
 class CommonHeaders(BaseModel):

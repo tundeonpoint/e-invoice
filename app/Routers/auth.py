@@ -10,17 +10,17 @@ from . import oauth2
 
 router = APIRouter(tags=['Authentication'])
 
-def verify_org(request:Request,db:Session = Depends(get_db)):
+def verify_org(client_id,client_secret,db:Session = Depends(get_db)):
 
-    client_id = request.headers.get('client_id')
-    client_secret = request.headers.get('client_secret')
+    # client_id = request.headers.get('client_id')
+    # client_secret = request.headers.get('client_secret')
 
     if not client_id or not client_secret:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials.')
     
-    result = db.query(models.Organisation).filter(models.Organisation.zoho_org_id == client_id).first()
+    result = db.query(models.User).filter(models.User.email == client_id).first()
 
-    if result == None or not utils.verify(result.org_secret,client_secret):      
+    if result == None or not utils.verify(result.password,client_secret):      
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials')
     
     return client_id
@@ -53,6 +53,6 @@ def org_auth(client_id:str = Form(...),client_secret:str = Form(...),
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid credentials.')
     
-    access_token = oauth2.create_access_token({"org_zoho_id":org_id})
+    access_token = oauth2.create_access_token({"org_id":org_id})
 
     return {"token" : access_token,"token_type":"bearer"}

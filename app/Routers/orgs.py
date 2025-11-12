@@ -21,12 +21,12 @@ def get_orgs(db:Session=Depends(get_db),
     if current_user == None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
     
-    try:
-        result = db.query(models.Organisation).all()
-    except Exception as error:
+    # try:
+    result = db.query(models.Organisation).all()
+    # except Exception as error:
 
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="Error retrieving records.")
+        # raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
+        #                 detail="Error retrieving records.")
     
     if result == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
