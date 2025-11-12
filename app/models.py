@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine,Table,MetaData,Integer,String,Column,Date,DateTime,ForeignKey,DATETIME
-from sqlalchemy import Float,JSON,Time
+from sqlalchemy import Float,JSON,Time,Boolean
 from sqlalchemy.orm import declarative_base,sessionmaker,relationship,Session
 import psycopg2
 from datetime import date,datetime
@@ -18,6 +18,13 @@ class Organisation(Base):
     business_description = Column(String)
     zoho_org_id = Column(String,nullable=False)
     date_created = Column(DateTime,default=datetime.now())
+    address = Column(JSON,default={
+            "street_name": "",
+            "city_name": "",
+            "postal_zone": "",
+            "lga": "",
+            "state": "",
+            "country": ""})
     invoices = relationship('Invoice',back_populates='owner')
     org_secret = Column(String,nullable=False)
     org_secret_plain = Column(String,nullable=False)
@@ -46,8 +53,22 @@ class Invoice(Base):
     originator_document_reference = Column(String)
     contract_document_reference = Column(String)
     additional_document_reference = Column(String) 
-    accounting_customer_party = Column(String) #this should reference the organisation table 
-    accounting_supplier_party = Column(String) #this should reference the organisation table
+    accounting_customer_party = Column(JSON,default={
+                "party_name": "",
+                "tin": "",
+                "email": "",
+                "telephone": "",
+                "business_description": "",
+                "postal_address": {
+                    "street_name": "",
+                    "city_name": "",
+                    "postal_zone": "",
+                    "lga": "",
+                    "state": "",
+                    "country": ""
+                }
+                })
+    accounting_supplier_party = Column(JSON,nullable=False) #this should reference the organisation table
     payee_party = Column(String) #this should reference the organisation table
     bill_party = Column(String) #this should reference the organisation table 
     ship_party = Column(String) #this should reference the organisation table 
@@ -63,6 +84,14 @@ class Invoice(Base):
     # creator = Column(Integer,nullable=False)
     line_items = Column(JSON)#relationship('Invoice_Line_Item',back_populates='invoice')
 
+class Invoice_Submission_Status(Base):
+    __tablename__ = 'invoice_submission_status'
+    # this class is required to eliminate any additional work
+    # involved in stripping out the following columns before submission to
+    # e-invoice platform
+    irn = Column(String,ForeignKey('invoices.irn'),nullable=False,unique=True,primary_key=True)
+    submission_status = Column(Boolean,default=False)
+    submission_datetime = Column(DateTime)
 
 class Invoice_Line_Item(Base):
     __tablename__ = 'invoice_line_items'
@@ -169,13 +198,13 @@ class Zoho_Invoice(Base):
     bcy_discount_total = Column(Float,nullable=False)
     bcy_total = Column(Float,nullable=False)
     total = Column(Float,nullable=False)
-
+    customer = Column(String)
 
     def __init__(self, **kwargs):
         # Define the fields to include in the constructor
         allowed_fields = ['business_id','invoice_id','invoice_number','date','currency_code',
                           'tax_type','tax_total','discount_total','total','bcy_discount_total',
-                          'bcy_total','total','sub_total'] 
+                          'bcy_total','total','sub_total','customer'] 
         
         # Iterate through allowed fields and assign if present in kwargs
         for field in allowed_fields:

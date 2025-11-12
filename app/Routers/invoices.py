@@ -133,6 +133,41 @@ def convert_zoho_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> models.
     n_invoice.line_items = invoice_line_items
     n_invoice.tax_total = tax_total_list
 
+    # add invoice supplier party info
+    n_invoice.accounting_supplier_party = {
+        "party_name": result.name,
+        "tin": result.tin,
+        "email": result.email,
+        "telephone": result.telephone,
+        "business_description": result.business_description,
+        "postal_address": {
+            "street_name": result.address['street_name'],
+            "city_name": result.address['city_name'],
+            "postal_zone": result.address['postal_zone'],
+            "lga": result.address['lga'],
+            "state": result.address['state'],
+            "country": result.address['country']
+        }
+
+    }
+
+    n_invoice.accounting_customer_party = {
+                "party_name": zoho_invoice.customer,
+                "tin": result.tin,
+                "email": result.email,
+                "telephone": result.telephone,
+                "business_description": result.business_description,
+                "postal_address": {
+                    "street_name": result.address['street_name'],
+                    "city_name": result.address['city_name'],
+                    "postal_zone": result.address['postal_zone'],
+                    "lga": result.address['lga'],
+                    "state": result.address['state'],
+                    "country": result.address['country']
+                }
+
+    }
+
     db.add(n_invoice)
     db.commit()
     

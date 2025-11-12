@@ -1,4 +1,4 @@
-from fastapi import FastAPI,Depends,Header
+from fastapi import FastAPI,Depends,Header,HTTPException,status
 from app.database import get_db
 # import database,sqlalchemy
 from sqlalchemy.orm import Session
@@ -28,3 +28,11 @@ def root():
 def header_test(org_id:str = Header('org_id',convert_underscores=False)):
     return {'Organisation':org_id}
 
+@app.get("/testvalidation/{biz_id}")
+def test_validation(biz_id:str):
+
+    if biz_id != '10001':
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail='Invalid business id')
+    else:
+        return 'Valid business id'
