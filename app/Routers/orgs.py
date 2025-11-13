@@ -5,7 +5,7 @@ from .. import schemas,models,database,utils
 from ..database import get_db
 from sqlalchemy.orm import Session
 from typing import List
-from . import oauth2
+from . import oauth2,auth
 import uuid
 
 router = APIRouter(
@@ -74,3 +74,9 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
                             detail="Error adding record.")
     
     return new_org
+
+@router.get('/validate/{business_id}',status_code=status.HTTP_302_FOUND)
+def validate_business(business_id:str,db:Session=Depends(get_db),
+                      org_id:str=Depends(auth.verify_org)):
+    
+    return org_id

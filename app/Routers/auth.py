@@ -23,7 +23,7 @@ def verify_org(client_id,client_secret,db:Session = Depends(get_db)):
     if result == None or not utils.verify(result.password,client_secret):      
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials')
     
-    return client_id
+    return result.email
 
 
 @router.post('/auth')
@@ -43,7 +43,7 @@ def user_auth(credentials:OAuth2PasswordRequestForm = Depends(),db:Session = Dep
 
     return {"token" : access_token,"token_type":"bearer"}
 
-# @router.post('/org_auth')
+@router.post('/org_auth')
 def org_auth(client_id:str = Form(...),client_secret:str = Form(...),
              db:Session = Depends(get_db)):
 
