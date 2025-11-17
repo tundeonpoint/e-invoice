@@ -7,6 +7,10 @@ from sqlalchemy.orm import Session
 from typing import List
 from . import oauth2,auth
 import uuid
+from fastapi.security import HTTPBasic,HTTPBasicCredentials
+
+security = HTTPBasic()
+
 
 router = APIRouter(
     prefix="/orgs",
@@ -53,16 +57,26 @@ def get_org(id:str,db:Session=Depends(get_db),
     
     return result
 
-@router.post('',status_code=status.HTTP_200_OK,response_model=schemas.OrganisationOut)
+@router.post('',status_code=status.HTTP_200_OK)
 def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
-            current_user:int = Depends(oauth2.get_current_user)):
+            credentials: HTTPBasicCredentials = Depends(security)):
     
-    if current_user == None:
+    # if current_user == None:
+    #     raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
+    if auth.verify_org(credentials.username,credentials.password,db) == False:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
     
     new_org = models.Organisation(**org.model_dump())
-    new_org.org_secret_plain = str(uuid.uuid4()).replace('-','') #this is for testing
-    new_org.org_secret = utils.hash(new_org.org_secret_plain)
+    org_secret_plain = str(uuid.uuid4()).replace('-','') #this is for testing
+    new_org.org_secret = utils.hash(org_secret_plain)
+    
+    try:
+        result_state = db.query(models.State_Code).filter(models.State_Code.name == new_org.address['state']).first()
+        result_lga = db.query(models.LGA_Code).filter(models.LGA_Code.name == new_org.address['lga']).filter(models.LGA_Code.state_code == result_state.code).first()
+        new_org.address['state'] = result_state.code
+        new_org.address['lga'] = result_lga.code
+    except:
+        pass    
     
     try:
         db.add(new_org)
@@ -70,13 +84,28 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
         # new_org = 
         db.refresh(new_org)
     except Exception as error:
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail="Error adding record.")
+        return {"status":"Failed","message":"Error creating organisation.",
+                "Exception":str(error)}
     
-    return new_org
+    return {"status":"Success","message":"Organisation added successfully.",
+            "Secret Key:":org_secret_plain}
 
 @router.get('/validate/{business_id}',status_code=status.HTTP_302_FOUND)
-def validate_business(business_id:str,db:Session=Depends(get_db),
-                      org_id:str=Depends(auth.verify_org)):
+def validate_business(business_id:str,credentials: HTTPBasicCredentials = Depends(security),
+                      db:Session=Depends(get_db)):
     
-    return org_id
+    if not auth.verify_org(credentials.username,credentials.password,db):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalide credentials.')
+    
+    return {'username':credentials.username}
+
+
+@router.put('/{zoho_id}',status_code=status.HTTP_200_OK)
+def regenerate_secret(zoho_id,db:Session=Depends(get_db),
+            credentials: HTTPBasicCredentials = Depends(security)):
+    
+    # if current_user == None:
+    #     raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
+    if auth.verify_org(credentials.username,credentials.password,db) == False:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
+    

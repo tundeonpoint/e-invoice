@@ -14,6 +14,7 @@ class Settings (BaseSettings):
     secret_key:str
     algorithm:str
     token_expiration_minutes:str
+    zoho_user:str
 
     model_config = SettingsConfigDict(env_file=os.path.join(os.path.dirname(__file__), '.env'))
 

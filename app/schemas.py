@@ -213,7 +213,6 @@ class OrganisationOut(BaseModel):
     business_description : str
     zoho_org_id : str
     address : dict
-    org_secret_plain : str  
 
 class CommonHeaders(BaseModel):
     host : str

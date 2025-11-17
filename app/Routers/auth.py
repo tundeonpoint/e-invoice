@@ -10,20 +10,20 @@ from . import oauth2
 
 router = APIRouter(tags=['Authentication'])
 
-def verify_org(client_id,client_secret,db:Session = Depends(get_db)):
+def verify_org(username,password,db):
 
     # client_id = request.headers.get('client_id')
     # client_secret = request.headers.get('client_secret')
 
-    if not client_id or not client_secret:
+    if not username or not password:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials.')
     
-    result = db.query(models.User).filter(models.User.email == client_id).first()
+    result = db.query(models.User).filter(models.User.email == username).first()
 
-    if result == None or not utils.verify(result.password,client_secret):      
+    if result == None or not utils.verify(result.password,password):      
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials')
     
-    return result.email
+    return True
 
 
 @router.post('/auth')

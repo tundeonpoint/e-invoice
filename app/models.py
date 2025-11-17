@@ -4,7 +4,7 @@ from sqlalchemy.orm import declarative_base,sessionmaker,relationship,Session
 import psycopg2
 from datetime import date,datetime
 import time
-from .database import Base,engine,session#,get_db
+from .database import Base#,engine,session#,get_db
 
 class Organisation(Base):
     __tablename__ = 'organisations'
@@ -16,7 +16,7 @@ class Organisation(Base):
     email = Column(String,nullable=False)
     telephone = Column(String,nullable=False)
     business_description = Column(String)
-    zoho_org_id = Column(String,nullable=False)
+    zoho_org_id = Column(String,nullable=False,unique=True)
     date_created = Column(DateTime,default=datetime.now())
     address = Column(JSON,default={
             "street_name": "",
@@ -27,7 +27,6 @@ class Organisation(Base):
             "country": ""})
     invoices = relationship('Invoice',back_populates='owner')
     org_secret = Column(String,nullable=False)
-    org_secret_plain = Column(String,nullable=False)
 
 class Invoice(Base):
     __tablename__ = 'invoices'
@@ -163,7 +162,7 @@ class Service_Code(Base):
 
 class LGA_Code(Base):
     __tablename__ = 'lga_codes'
-    name = Column(String,nullable=False,unique=True)
+    name = Column(String,nullable=False,unique=False)
     code = Column(String,primary_key=True)
     state_code = Column(String,ForeignKey('state_codes.code'),nullable=False)
 
