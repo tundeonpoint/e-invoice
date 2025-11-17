@@ -75,8 +75,10 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
         result_lga = db.query(models.LGA_Code).filter(models.LGA_Code.name == new_org.address['lga']).filter(models.LGA_Code.state_code == result_state.code).first()
         new_org.address['state'] = result_state.code
         new_org.address['lga'] = result_lga.code
-    except:
-        pass    
+        print(f'new codes:{result_state.code}, {result_lga.code}')
+    except Exception as error:
+        return {"status":"Failed","message":"Error creating organisation.",
+        "Exception":str(error)}    
     
     try:
         db.add(new_org)
