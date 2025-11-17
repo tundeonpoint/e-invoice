@@ -40,29 +40,29 @@ def test_validation(biz_id:str):
         return 'Valid business id'
 
 
-#@app.post("/insert_states")
-# def insert_states(db:Session = Depends(get_db)):
-#     # CSV -> DataFrame
-#     df = pd.read_csv("List_of_States.csv")
-#     # db = get_db()
-#     # Insert using ORM
-#     with db:#Session(engine) as session:
-#         for _, row in df.iterrows():
-#             record = State_Code(**row.to_dict())
-#             db.add(record)
-#             print(record)
-#         db.commit()
+@app.post("/insert_states")
+def insert_states(db:Session = Depends(get_db)):
+    # CSV -> DataFrame
+    df = pd.read_csv("List_of_States.csv")
+    # db = get_db()
+    # Insert using ORM
+    with db:#Session(engine) as session:
+        for _, row in df.iterrows():
+            record = State_Code(**row.to_dict())
+            db.add(record)
+            print(record)
+        db.commit()
 
-#@app.post("/insert_lgas")
-# def insert_lgas(db:Session = Depends(get_db)):
-#     # CSV -> DataFrame
-#     df = pd.read_csv("List_of_LGAs.csv")
-#     # db = get_db()
-#     # Insert using ORM
-#     with db:#Session(engine) as session:
-#         for _, row in df.iterrows():
-#             record = LGA_Code(**row.to_dict())
-#             db.add(record)
-#             print(record)
-#         db.commit()
+@app.post("/insert_lgas")
+def insert_lgas(db:Session = Depends(get_db)):
+    # CSV -> DataFrame
+    df = pd.read_csv("List_of_LGAs.csv")
+    # db = get_db()
+    # Insert using ORM
+    with db:#Session(engine) as session:
+        for _, row in df.iterrows():
+            record = LGA_Code(**row.to_dict())
+            db.add(record)
+            print(record)
+        db.commit()
 
