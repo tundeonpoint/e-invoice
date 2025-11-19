@@ -8,9 +8,10 @@ from passlib.hash import pbkdf2_sha256
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
 from . import oauth2,auth
 from typing import List
-from sqlalchemy import Date,Time
+from sqlalchemy import Date,Time,cast
 import json
 import re
+from datetime import datetime
 
 router = APIRouter(tags=['Invoices'],
                    prefix="/invoices")
@@ -55,7 +56,6 @@ def convert_zoho_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> models.
     n_invoice.document_currency_code = zoho_invoice.currency_code
     n_invoice.tax_currency_code = zoho_invoice.currency_code#this is a default value which needs to be updated
     n_invoice.invoice_type_code = '550' #this is a default value which needs to be updated
-    n_invoice.accounting_supplier_party = n_invoice.business_id
     n_invoice.payment_means = '30' #this is a default value which needs to be updated
     n_invoice.legal_monetary_total = {
         "line_extension_amount": zoho_invoice.sub_total,
@@ -64,7 +64,22 @@ def convert_zoho_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> models.
         "payable_amount": zoho_invoice.total
 
     }
-
+    n_invoice.accounting_customer_party = {
+            "party_name": zoho_invoice.customer_name,
+            # "tin": "",
+            "email": zoho_invoice.email,
+            "telephone": zoho_invoice.customer_default_billing_address['phone'],
+            "business_description": "",
+            "postal_address": {
+                "street_name": zoho_invoice.customer_default_billing_address['address'] + " " +
+                zoho_invoice.customer_default_billing_address['street2'],
+                "city_name": zoho_invoice.customer_default_billing_address['city'],
+                "postal_zone": zoho_invoice.customer_default_billing_address['zip'],
+                "lga": "",
+                "state": zoho_invoice.customer_default_billing_address['state'],
+                "country": zoho_invoice.customer_default_billing_address['country']
+            }
+    }
     #construct the e-invoice tax_total object
     tax_total_list = []
     tax_total = {}
@@ -129,7 +144,7 @@ def convert_zoho_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> models.
                 "tax_subtotal":tax_subtotal_list
             }
         )
-    
+    n_invoice.note = zoho_invoice.notes
     n_invoice.line_items = invoice_line_items
     n_invoice.tax_total = tax_total_list
 
@@ -141,30 +156,13 @@ def convert_zoho_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> models.
         "telephone": result.telephone,
         "business_description": result.business_description,
         "postal_address": {
-            "street_name": result.address['street_name'],
-            "city_name": result.address['city_name'],
-            "postal_zone": result.address['postal_zone'],
+            "street_name": result.address['line_1'],
+            "city_name": result.address['line_2'],
+            "postal_zone": result.address['postal_code'],
             "lga": result.address['lga'],
             "state": result.address['state'],
             "country": result.address['country']
         }
-
-    }
-
-    n_invoice.accounting_customer_party = {
-                "party_name": zoho_invoice.customer,
-                "tin": result.tin,
-                "email": result.email,
-                "telephone": result.telephone,
-                "business_description": result.business_description,
-                "postal_address": {
-                    "street_name": result.address['street_name'],
-                    "city_name": result.address['city_name'],
-                    "postal_zone": result.address['postal_zone'],
-                    "lga": result.address['lga'],
-                    "state": result.address['state'],
-                    "country": result.address['country']
-                }
 
     }
 
@@ -173,22 +171,172 @@ def convert_zoho_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> models.
     
     return n_invoice
 
-def create_invoice(invoice,db):
+def create_arca_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> dict:
 
-    print(f'****** invoice type is {type(invoice)}')
-    # new_invoice = models.Invoice(**invoice.model_dump())
+    n_invoice = models.Invoice()
+    result = db.query(models.Organisation).filter(models.Organisation.zoho_org_id == zoho_invoice.zoho_org_id).first()
+    arca_invoice = {}
 
-    try:
-        db.add(invoice)
-        db.commit()
-    except Exception as error:
-        print(error)
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                            detail='Error creating e-invoice')
+    # populate the invoice components
+    arca_invoice = {
+
+        "requesttype": "MINIMAL",
+        "invoice_number": zoho_invoice.invoice_number,
+        "business_id": result.business_id,
+        "entity_id": "entity_id_placeholder",
+        "issue_date": zoho_invoice.date.date(),
+        "due_date": zoho_invoice.due_date,
+        "issue_time": zoho_invoice.date.time(),
+        "invoice_type_code": "550",
+        "note":zoho_invoice.notes,
+        "payment_status": "PENDING",
+        "tax_point_date": datetime.now().date(),
+        "document_currency_code": zoho_invoice.currency_code,
+        "tax_currency_code": zoho_invoice.currency_code,
+        # n_invoice.irn = zoho_invoice.invoice_number+'-'+result.business_id+'-'+zoho_invoice.date.cast(Date).strftime('%Y%m%d')
+        # n_invoice.payment_means : '30' #this is a default value which needs to be updated
+        "customer_party_id":zoho_invoice.customer_id,
+        "customer_party_name": zoho_invoice.customer_name,
+        # "tin": "",
+        "customer_party_email": zoho_invoice.email,
+        "customer_party_telephone": zoho_invoice.customer_default_billing_address['phone'],
+        "business_description": "",
+        "customer_party_street_name": zoho_invoice.customer_default_billing_address['address'] + " " +
+        zoho_invoice.customer_default_billing_address['street2'],
+        "customer_city_name": zoho_invoice.customer_default_billing_address['city'],
+        "customer_postal_zone": zoho_invoice.customer_default_billing_address['zip'],
+        "customer_lga": "N/A",
+        "customer_state": zoho_invoice.customer_default_billing_address['state'],
+        "customer_country": zoho_invoice.customer_default_billing_address['country'],
+
+        "supplier_party_id": result.business_id,
+        "supplier_party_name": result.name,
+        "supplier_party_tin": result.tin,
+        "supplier_party_email": result.email,
+        "supplier_party_telephone": result.telephone,
+        "supplier_party_business_description": result.business_description,
+        "supplier_street_name": result.address['line_1'],
+        "supplier_city_name": result.address['line_2'],
+        "supplier_postal_zone": result.address['postal_code'],
+        "supplier_lga": result.address['lga'],
+        "supplier_state": result.address['state'],
+        "supplier_country": result.address['country'],
+
+        "line_extension_amount": zoho_invoice.sub_total,
+        "tax_exclusive_amount": zoho_invoice.sub_total,
+        "tax_inclusive_amount": zoho_invoice.total,
+        "payable_amount": zoho_invoice.total,
+
+        "allowance_charge":[],#to be revisited
+
+
+    }
+    n_invoice.legal_monetary_total = {
+        "line_extension_amount": zoho_invoice.sub_total,
+        "tax_exclusive_amount": zoho_invoice.sub_total,
+        "tax_inclusive_amount": zoho_invoice.total,
+        "payable_amount": zoho_invoice.total
+
+    }
+    #construct the e-invoice tax_total object
+    tax_total_list = []
+    tax_total = {}
+    invoice_line_items = []
     
-    return invoice
+    for line_item in zoho_invoice.line_items:
+        
+        tax_subtotal_list = []
 
-@router.post("/zohoinvoice",status_code=status.HTTP_201_CREATED)#response_model=schemas.Invoice)
+        tax_total['tax_amount'] = 0
+
+        invoice_line_items.append(
+
+            {
+                # "id": idx,  # or item.get("line_item_id") if you prefer Zoho ID
+                "hsn_code": "hsn code placeholder",#item.get("item_id", "UNKNOWN"),  # No explicit HSN in JSON, so using item_id
+                "product_category": "product category placeholder",#item.get("item_type_formatted", "General"),
+                # "isic_code": 9999,  # Placeholder: ISIC not in Zoho JSON
+                # "service_category": "service category placeholder",#item.get("name", "Unknown Service"),
+                "discount_rate": 0.0,
+                "discount_amount": line_item.discount,  # Not directly in JSON; can be computed if needed
+                "fee_rate": 0.0,  # No such field in Zoho JSON
+                "fee_amount": 0.0,
+                "invoiced_quantity": line_item.quantity,#float(item.get("quantity", 0)),
+                "line_extension_amount": line_item.item_total,#float(item.get("item_total", 0)),
+                "invoice_id" : n_invoice.irn,
+                "item_name": line_item.name,
+                "item_description": line_item.description,
+                "price_amount": line_item.rate,
+                "base_quantity": 1.0,
+                "price_unit": zoho_invoice.currency_code + " per 1"
+                # "item": {
+                #     "name": line_item.name,
+                #     "description": line_item.description,
+                #     "sellers_item_identification": line_item.name
+                # },
+                # "price": {
+                #     "price_amount": line_item.rate,
+                #     "base_quantity": 1,
+                #     "price_unit": zoho_invoice.currency_code + " per 1"
+                # }
+            }
+
+        
+        )
+    # invoice_line_items
+    
+        # create the line_items for the FIRS e-invoice
+
+        line_item_tax_total = 0
+
+        for line_item_tax in line_item.line_item_taxes:
+            
+            line_item_tax_total += line_item_tax.tax_amount
+
+            tax_subtotal_list.append({
+                "tax_amount": line_item_tax.tax_amount,
+                "tax_subtotal": {
+                    "tax_amount": line_item_tax.tax_amount,
+                    "taxable_amount": line_item.item_total,
+                    "category_id": str.strip(re.sub(r'\([^)]*\)', '', line_item_tax.tax_name)),
+                    "category_percent": line_item_tax.tax_percentage
+                }
+            })
+               
+        tax_total_list.append(
+            {
+                "tax_amount":line_item_tax_total,
+                "tax_subtotal":tax_subtotal_list
+            }
+        )
+    arca_invoice["invoice_line"] = invoice_line_items
+    arca_invoice["tax_total"] = tax_total_list
+
+    return arca_invoice
+    # n_invoice.line_items = invoice_line_items
+    # n_invoice.tax_total = tax_total_list
+
+    # add invoice supplier party info
+    # n_invoice.accounting_supplier_party = {
+    #     "party_name": result.name,
+    #     "tin": result.tin,
+    #     "email": result.email,
+    #     "telephone": result.telephone,
+    #     "business_description": result.business_description,
+    #     "postal_address": {
+    #         "street_name": result.address['line_1'],
+    #         "city_name": result.address['line_2'],
+    #         "postal_zone": result.address['postal_code'],
+    #         "lga": result.address['lga'],
+    #         "state": result.address['state'],
+    #         "country": result.address['country']
+    #     }
+
+    # }
+
+
+
+@router.post("",status_code=status.HTTP_201_CREATED)#,response_model=schemas.Invoice)
 async def create_zoho_invoice(request:Request,invoice:dict,org_id : str = Depends(auth.verify_org),
                               db:Session = Depends(get_db)):
 
@@ -197,6 +345,7 @@ async def create_zoho_invoice(request:Request,invoice:dict,org_id : str = Depend
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail='Invalid Org Id.')
     
     n_zohoinvoice = models.Zoho_Invoice(**invoice['invoice'])#['invoice'])
+    # print(f'*******due date:{n_zohoinvoice.du}')
     n_zohoinvoice.zoho_org_id = org_id
     n_zohoinvoice.business_id = org_info.business_id
     
@@ -227,10 +376,10 @@ async def create_zoho_invoice(request:Request,invoice:dict,org_id : str = Depend
                             detail='Error adding invoice.')
     
     # convert the invoice to an e-invoice format and store it
-    c_invoice = convert_zoho_invoice(n_zohoinvoice,db)
-    create_invoice(c_invoice,db)
+    # c_invoice = convert_zoho_invoice(n_zohoinvoice,db)
+    arca_invoice = create_arca_invoice(n_zohoinvoice,db)
     # print(f'********* invoice comps - {c_invoice}')
-    return c_invoice
+    return arca_invoice
 
 # @router.post("",status_code=status.HTTP_201_CREATED,response_model=schemas.Invoice)
 

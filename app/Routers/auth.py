@@ -7,23 +7,26 @@ from .. import models,utils
 from passlib.hash import pbkdf2_sha256
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
 from . import oauth2
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 router = APIRouter(tags=['Authentication'])
 
-def verify_org(username,password,db):
+security = HTTPBasic()
+
+def verify_org(credentials: HTTPBasicCredentials = Depends(security),db = Depends(get_db)):
 
     # client_id = request.headers.get('client_id')
     # client_secret = request.headers.get('client_secret')
-
-    if not username or not password:
+    print(f'*******username:{credentials.username}')
+    if credentials.username == '' or credentials.password == '':
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials.')
     
-    result = db.query(models.User).filter(models.User.email == username).first()
-
-    if result == None or not utils.verify(result.password,password):      
+    result = db.query(models.Organisation).filter(models.Organisation.zoho_org_id == credentials.username).first()
+    print(f'********password comparison:{utils.verify(result.org_secret,credentials.password)}')
+    if result == None or not utils.verify(result.org_secret,credentials.password):      
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials')
     
-    return True
+    return credentials.username
 
 
 @router.post('/auth')

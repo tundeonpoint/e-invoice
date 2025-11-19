@@ -1,5 +1,5 @@
 from pydantic import BaseModel,EmailStr,ConfigDict,Field
-from datetime import datetime,date
+from datetime import datetime,date,time
 from typing import Optional
 import json
 
@@ -8,15 +8,45 @@ class Invoice(BaseModel):
     business_id : str
     irn : str
     issue_date : date
+    issue_time : time
+    due_date : date
+    note : str
+    tax_point_date : date
+    accounting_cost : str
+    buyer_reference : str
+    invoice_delivery_period : str
+    dispatch_document_reference : str 
+    receipt_document_reference : str
+    originator_document_reference : str
+    contract_document_reference : str
+    additional_document_reference : str 
+    accounting_customer_party : dict
+    accounting_supplier_party : dict
+    payee_party : dict #this should reference the organisation table
+    bill_party : dict #this should reference the organisation table 
+    ship_party : dict #this should reference the organisation table 
+    tax_representative_party : dict #this should reference the organisation table 
+    # actual_delivery_date : date #this should reference the organisation table 
+    payment_means : str #a list of dictionaries containing payment means code, and payment due date in yyyy-mm-dd format 
+    payment_terms_note : str 
+    allowance_charge : list #a list of dictionaries containing charge_indicator (bolean) and amount (float) 
+    tax_total : dict#references a table which should contain a breakdown of taxes charged against a particular invoice 
+    legal_monetary_total : dict#references a structure containing a breakedown of the total to be remitted 
+    created_at : datetime
+    # owner = relationship('Organisation',back_populates='invoices')
+    # creator = Column(Integer,nullable=False)
+    line_items : list#relationship('Invoice_Line_Item',back_populates='invoice')
     document_currency_code : str
     invoice_type_code : str
     tax_currency_code : str
-    accounting_supplier_party : str
-    tax_total : float
-    legal_monetary_total : float
+    accounting_supplier_party : dict
+    tax_total : list
+    legal_monetary_total : dict
     payment_means : str
     payment_status : str
-    creator : int
+    # creator : int
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InvoiceCreate(BaseModel):
@@ -43,6 +73,32 @@ class ZohoInvoiceCreate(BaseModel):
     tax_total : float
     discount_total : float
     total : float
+    # currency_code = Column(String,nullable=False)
+    # tax_type = Column(String,nullable=False,default='tax')
+    # tax_total = Column(Float,nullable=False,default=0)
+    # discount_total = Column(Float,nullable=False,default=0)
+    # total = Column(Float,nullable=False)
+    # created_at = Column(DateTime,default=datetime.now())
+    # zoho_org_id = Column(String,nullable=False,unique=False)
+    # line_items = relationship('Zoho_Invoice_Line_Item',back_populates='invoice')
+    # sub_total = Column(Float,nullable=False)
+    # bcy_discount_total = Column(Float,nullable=False)
+    # bcy_total = Column(Float,nullable=False)
+    # total = Column(Float,nullable=False)
+    # due_date = Column(Date)
+    # accounting_cost = Column(String,default='')
+    # customer_name = Column(String,default='')
+    # email = Column(String,default='')
+    # customer_default_billing_address = Column(JSON,default={
+    #     "zip": "",
+    #     "country": "",
+    #     "address": "",
+    #     "city": "",
+    #     "phone": "",
+    #     "street2": "",
+    #     "state": "",
+    #     "fax": "",
+    #     "state_code": ""})
 
 
 class ZohoInvoice(BaseModel):

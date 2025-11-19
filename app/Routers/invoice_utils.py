@@ -5,9 +5,12 @@ from .. import schemas,models
 from ..database import get_db
 # import database,sqlalchemy
 from sqlalchemy.orm import Session
+import pandas as pd
+from app.models import State_Code,LGA_Code,Country_Code
 
 router = APIRouter(
-    tags=['Invoice Supporting Data']
+    tags=['Invoice Supporting Data'],
+    prefix='/utils'
 )
 
 @router.get("/invoice_types",status_code=status.HTTP_200_OK)
@@ -107,6 +110,15 @@ def create_lga_code(lga_code:schemas.LGACode,db:Session = Depends(get_db)):
         return "Error adding new LGA code"
     return "LGA code added successfully"
 
+@router.get("/countries")
+def get_country_codes(db:Session = Depends(get_db)):
+    try:
+        country_codes = db.query(models.Country_Code).all()
+        return {"data" : country_codes}
+    except Exception as error:
+        print(error)
+        return "Error retrieving country codes"
+
 @router.get("/vat_exemptions")
 def get_vat_exemptions(db:Session = Depends(get_db)):
     try:
@@ -187,3 +199,43 @@ def create_service_code(service_code:schemas.ServiceCode,db:Session = Depends(ge
         print(error)
         return "Error adding new service code"
     return "Service code added successfully"
+
+@router.post("/states/bulk")
+def insert_states(db:Session = Depends(get_db)):
+    # CSV -> DataFrame
+    df = pd.read_csv("List_of_States.csv")
+    # db = get_db()
+    # Insert using ORM
+    with db:#Session(engine) as session:
+        for _, row in df.iterrows():
+            record = State_Code(**row.to_dict())
+            db.add(record)
+            print(record)
+        db.commit()
+
+@router.post("/lgas/bulk")
+def insert_lgas(db:Session = Depends(get_db)):
+    # CSV -> DataFrame
+    df = pd.read_csv("List_of_LGAs.csv")
+    # db = get_db()
+    # Insert using ORM
+    with db:#Session(engine) as session:
+        for _, row in df.iterrows():
+            record = LGA_Code(**row.to_dict())
+            db.add(record)
+            print(record)
+        db.commit()
+
+@router.post("/countries/bulk")
+def insert_countries(db:Session = Depends(get_db)):
+    # CSV -> DataFrame
+    df = pd.read_csv("List_of_Countries.csv")
+    # db = get_db()
+    # Insert using ORM
+    with db:#Session(engine) as session:
+        for _, row in df.iterrows():
+            record = Country_Code(**row.to_dict())
+            db.add(record)
+            print(record)
+        db.commit()
+

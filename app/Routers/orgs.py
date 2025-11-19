@@ -58,25 +58,31 @@ def get_org(id:str,db:Session=Depends(get_db),
     return result
 
 @router.post('',status_code=status.HTTP_200_OK)
-def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
-            credentials: HTTPBasicCredentials = Depends(security)):
+def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db)):
     
     # if current_user == None:
     #     raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
-    if auth.verify_org(credentials.username,credentials.password,db) == False:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
+    # if auth.verify_org(credentials.username,credentials.password,db) == False:
+    #     raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
     
     new_org = models.Organisation(**org.model_dump())
+
+    if not utils.arca_verify_org(new_org):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Invalid organisation information.')
+    
     org_secret_plain = str(uuid.uuid4()).replace('-','') #this is for testing
     new_org.org_secret = utils.hash(org_secret_plain)
     
     try:
         result_state = db.query(models.State_Code).filter(models.State_Code.name == new_org.address['state']).first()
         result_lga = db.query(models.LGA_Code).filter(models.LGA_Code.name == new_org.address['lga']).filter(models.LGA_Code.state_code == result_state.code).first()
+        result_country = db.query(models.Country_Code).filter(models.Country_Code.name == new_org.address['country']).first()
         new_org.address['state'] = result_state.code
         new_org.address['lga'] = result_lga.code
-        print(f'new codes:{result_state.code}, {result_lga.code}')
+        new_org.address['country'] = result_country.code
     except Exception as error:
+        print(f'******new codes:{result_state.code}, {result_lga.code},{result_country}')
         return {"status":"Failed","message":"Error creating organisation.",
         "Exception":str(error)}    
     

@@ -31,27 +31,27 @@ class Organisation(Base):
 class Invoice(Base):
     __tablename__ = 'invoices'
     id = Column(Integer,primary_key=True)
-    business_id = Column(String,ForeignKey('organisations.business_id'),nullable=False)
+    business_id = Column(String,ForeignKey('organisations.business_id',ondelete='CASCADE'),nullable=False)
     irn = Column(String,nullable=False,unique=True)
     issue_date = Column(Date,nullable=False)#this date needs to be converted to YYYY-MM-DD
-    due_date = Column(Date)#this date needs to be converted to YYYY-MM-DD
+    due_date = Column(Date,default=datetime.now().date())#this date needs to be converted to YYYY-MM-DD
     issue_time = Column(Time)#extract the time component of the issue date from this
     invoice_type_code = Column(String,ForeignKey('invoice_types.key'),nullable=False)
     payment_status = Column(String,nullable=False,default='PENDING') 
-    note = Column(String)
-    tax_point_date = Column(Date) 
+    note = Column(String,default='')
+    tax_point_date = Column(Date,default=datetime.now().date())
     document_currency_code = Column(String,ForeignKey('currencies.code'),nullable=False,default='NGN')
     tax_currency_code = Column(String,ForeignKey('currencies.code'),nullable=False,default='NGN')
-    accounting_cost = Column(String) 
-    buyer_reference = Column(String) 
-    invoice_delivery_period = Column(String) 
-    order_reference = Column(String)
-    billing_reference = Column(String) 
-    dispatch_document_reference = Column(String) 
-    receipt_document_reference = Column(String)
-    originator_document_reference = Column(String)
-    contract_document_reference = Column(String)
-    additional_document_reference = Column(String) 
+    accounting_cost = Column(String,default='')
+    buyer_reference = Column(String,default='')
+    invoice_delivery_period = Column(String,default='')
+    order_reference = Column(String,default='')
+    billing_reference = Column(String,default='') 
+    dispatch_document_reference = Column(String,default='') 
+    receipt_document_reference = Column(String,default='')
+    originator_document_reference = Column(String,default='')
+    contract_document_reference = Column(String,default='')
+    additional_document_reference = Column(String,default='')
     accounting_customer_party = Column(JSON,default={
                 "party_name": "",
                 "tin": "",
@@ -67,15 +67,85 @@ class Invoice(Base):
                     "country": ""
                 }
                 })
-    accounting_supplier_party = Column(JSON,nullable=False) #this should reference the organisation table
-    payee_party = Column(String) #this should reference the organisation table
-    bill_party = Column(String) #this should reference the organisation table 
-    ship_party = Column(String) #this should reference the organisation table 
-    tax_representative_party = Column(String) #this should reference the organisation table 
-    actual_delivery_date = Column(String) #this should reference the organisation table 
+    accounting_supplier_party = Column(JSON,nullable=False,default={
+                "party_name": "",
+                "tin": "",
+                "email": "",
+                "telephone": "",
+                "business_description": "",
+                "postal_address": {
+                    "street_name": "",
+                    "city_name": "",
+                    "postal_zone": "",
+                    "lga": "",
+                    "state": "",
+                    "country": ""
+                }
+                })
+    payee_party = Column(JSON,default={
+                "party_name": "",
+                "tin": "",
+                "email": "",
+                "telephone": "",
+                "business_description": "",
+                "postal_address": {
+                    "street_name": "",
+                    "city_name": "",
+                    "postal_zone": "",
+                    "lga": "",
+                    "state": "",
+                    "country": ""
+                }
+                }) #this should reference the organisation table
+    bill_party = Column(JSON,default={
+                "party_name": "",
+                "tin": "",
+                "email": "",
+                "telephone": "",
+                "business_description": "",
+                "postal_address": {
+                    "street_name": "",
+                    "city_name": "",
+                    "postal_zone": "",
+                    "lga": "",
+                    "state": "",
+                    "country": ""
+                }
+                }) #this should reference the organisation table 
+    ship_party = Column(JSON,default={
+                "party_name": "",
+                "tin": "",
+                "email": "",
+                "telephone": "",
+                "business_description": "",
+                "postal_address": {
+                    "street_name": "",
+                    "city_name": "",
+                    "postal_zone": "",
+                    "lga": "",
+                    "state": "",
+                    "country": ""
+                }
+                }) #this should reference the organisation table 
+    tax_representative_party = Column(JSON,default={
+                "party_name": "",
+                "tin": "",
+                "email": "",
+                "telephone": "",
+                "business_description": "",
+                "postal_address": {
+                    "street_name": "",
+                    "city_name": "",
+                    "postal_zone": "",
+                    "lga": "",
+                    "state": "",
+                    "country": ""
+                }
+                }) #this should reference the organisation table 
+    actual_delivery_date = Column(Date) #this should reference the organisation table 
     payment_means = Column(String,ForeignKey('payment_means.key'),nullable=False,default='30') #a list of dictionaries containing payment means code, and payment due date in yyyy-mm-dd format 
-    payment_terms_note = Column(String) 
-    allowance_charge = Column(Integer) #a list of dictionaries containing charge_indicator (bolean) and amount (float) 
+    payment_terms_note = Column(String,default='') 
+    allowance_charge = Column(JSON,default=[]) #a list of dictionaries containing charge_indicator (bolean) and amount (float) 
     tax_total = Column(JSON)#references a table which should contain a breakdown of taxes charged against a particular invoice 
     legal_monetary_total = Column(JSON,nullable=False)#references a structure containing a breakedown of the total to be remitted 
     created_at = Column(DateTime,default=datetime.now())
@@ -171,6 +241,11 @@ class State_Code(Base):
     name = Column(String,nullable=False,unique=True)
     code = Column(String,primary_key=True)
 
+class Country_Code(Base):
+    __tablename__ = 'country_codes'
+    name = Column(String,nullable=False,unique=True)
+    code = Column(String,primary_key=True)
+
 class User(Base):
     __tablename__ = 'users'
     id = Column(Integer,primary_key=True)
@@ -197,14 +272,28 @@ class Zoho_Invoice(Base):
     bcy_discount_total = Column(Float,nullable=False)
     bcy_total = Column(Float,nullable=False)
     total = Column(Float,nullable=False)
-    customer = Column(String)
+    due_date = Column(Date)
+    accounting_cost = Column(String,default='')
+    customer_name = Column(String,default='')
+    customer_id = Column(String)
+    email = Column(String,default='')
+    notes = Column(String,default='')
+    customer_default_billing_address = Column(JSON,default={
+        "zip": "",
+        "country": "",
+        "address": "",
+        "city": "",
+        "phone": "",
+        "street2": "",
+        "state": "",
+        "fax": "",
+        "state_code": ""})
 
     def __init__(self, **kwargs):
         # Define the fields to include in the constructor
-        allowed_fields = ['business_id','invoice_id','invoice_number','date','currency_code',
-                          'tax_type','tax_total','discount_total','total','bcy_discount_total',
-                          'bcy_total','total','sub_total','customer'] 
-        
+        allowed_fields = ['business_id','invoice_id','invoice_number','date','currency_code','tax_type','tax_total','discount_total','total','created_at','zoho_org_id','sub_total','bcy_discount_total','bcy_total','total','due_date','accounting_cost','customer_name','email','customer_default_billing_address','notes','customer_id'] 
+    
+
         # Iterate through allowed fields and assign if present in kwargs
         for field in allowed_fields:
             if field in kwargs:
