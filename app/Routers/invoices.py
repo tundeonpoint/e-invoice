@@ -35,11 +35,16 @@ def get_spec_invoices(inv_id,response:Response,
     return result
 
 @router.get("/{inv_id}/orgs/{org_id}",status_code=status.HTTP_200_OK)
-def get_org_invoice(inv_id = None,org_id = None):
+def get_org_invoice(inv_id = None,org_id = None,db:Session=Depends(get_db)):
 
-    if not inv_id:
-        return f"all invoices returned for {org_id}"
-    return f"invoice id {inv_id} returned for {org_id} "
+    result = db.query(models.Zoho_Invoice).filter(models.Zoho_Invoice.zoho_org_id == org_id).filter(models.Zoho_Invoice.invoice_number == inv_id).first()
+
+    if result == None:
+        return "No invoices found"
+    else:
+        return result#create_arca_invoice(result,db)
+
+    # return f"invoice id {inv_id} returned for {org_id} "
 
 def convert_zoho_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> models.Invoice:
 
@@ -302,27 +307,6 @@ def create_arca_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> dict:
     arca_invoice["tax_total"] = tax_total_list
 
     return arca_invoice
-    # n_invoice.line_items = invoice_line_items
-    # n_invoice.tax_total = tax_total_list
-
-    # add invoice supplier party info
-    # n_invoice.accounting_supplier_party = {
-    #     "party_name": result.name,
-    #     "tin": result.tin,
-    #     "email": result.email,
-    #     "telephone": result.telephone,
-    #     "business_description": result.business_description,
-    #     "postal_address": {
-    #         "street_name": result.address['line_1'],
-    #         "city_name": result.address['line_2'],
-    #         "postal_zone": result.address['postal_code'],
-    #         "lga": result.address['lga'],
-    #         "state": result.address['state'],
-    #         "country": result.address['country']
-    #     }
-
-    # }
-
 
 
 @router.post("",status_code=status.HTTP_201_CREATED)#,response_model=schemas.Invoice)
