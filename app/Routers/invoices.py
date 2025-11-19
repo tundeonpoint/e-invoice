@@ -258,27 +258,16 @@ def create_arca_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> dict:
                 # "isic_code": 9999,  # Placeholder: ISIC not in Zoho JSON
                 # "service_category": "service category placeholder",#item.get("name", "Unknown Service"),
                 "discount_rate": 0.0,
-                "discount_amount": line_item.discount,  # Not directly in JSON; can be computed if needed
+                "discount_amount": line_item['discount'],  # Not directly in JSON; can be computed if needed
                 "fee_rate": 0.0,  # No such field in Zoho JSON
                 "fee_amount": 0.0,
-                "invoiced_quantity": line_item.quantity,#float(item.get("quantity", 0)),
-                "line_extension_amount": line_item.item_total,#float(item.get("item_total", 0)),
-                "invoice_id" : n_invoice.irn,
-                "item_name": line_item.name,
-                "item_description": line_item.description,
-                "price_amount": line_item.rate,
+                "invoiced_quantity": line_item['quantity'],#float(item.get("quantity", 0)),
+                "line_extension_amount": line_item['item_total'],#float(item.get("item_total", 0)),
+                "item_name": line_item['name'],
+                "item_description": line_item['description'],
+                "price_amount": line_item['rate'],
                 "base_quantity": 1.0,
                 "price_unit": zoho_invoice.currency_code + " per 1"
-                # "item": {
-                #     "name": line_item.name,
-                #     "description": line_item.description,
-                #     "sellers_item_identification": line_item.name
-                # },
-                # "price": {
-                #     "price_amount": line_item.rate,
-                #     "base_quantity": 1,
-                #     "price_unit": zoho_invoice.currency_code + " per 1"
-                # }
             }
 
         
@@ -289,17 +278,17 @@ def create_arca_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> dict:
 
         line_item_tax_total = 0
 
-        for line_item_tax in line_item.line_item_taxes:
+        for line_item_tax in line_item['line_item_taxes']:
             
-            line_item_tax_total += line_item_tax.tax_amount
+            line_item_tax_total += line_item_tax['tax_amount']
 
             tax_subtotal_list.append({
-                "tax_amount": line_item_tax.tax_amount,
+                "tax_amount": line_item_tax['tax_amount'],
                 "tax_subtotal": {
-                    "tax_amount": line_item_tax.tax_amount,
-                    "taxable_amount": line_item.item_total,
-                    "category_id": str.strip(re.sub(r'\([^)]*\)', '', line_item_tax.tax_name)),
-                    "category_percent": line_item_tax.tax_percentage
+                    "tax_amount": line_item_tax['tax_amount'],
+                    "taxable_amount": line_item['item_total'],
+                    "category_id": str.strip(re.sub(r'\([^)]*\)', '', line_item_tax['tax_name'])),
+                    "category_percent": line_item_tax['tax_percentage']
                 }
             })
                
@@ -348,26 +337,27 @@ async def create_zoho_invoice(request:Request,invoice:dict,org_id : str = Depend
     # print(f'*******due date:{n_zohoinvoice.du}')
     n_zohoinvoice.zoho_org_id = org_id
     n_zohoinvoice.business_id = org_info.business_id
-    
+    n_zohoinvoice.line_items = invoice["invoice"]["line_items"]
+
     try:
         db.add(n_zohoinvoice)
-        db.flush()
-        line_items = invoice['invoice']['line_items']
-        for line_item in line_items:
-            line_item['invoice_id'] = n_zohoinvoice.invoice_id
-            n_zohoinvoicelineitem = models.Zoho_Invoice_Line_Item(**line_item)
-            n_zohoinvoicelineitem.invoice_id = n_zohoinvoice.invoice_id
-            db.add(n_zohoinvoicelineitem)
+        # db.flush()
+        # line_items = invoice['invoice']['line_items']
+        # for line_item in line_items:
+        #     line_item['invoice_id'] = n_zohoinvoice.invoice_id
+        #     n_zohoinvoicelineitem = models.Zoho_Invoice_Line_Item(**line_item)
+        #     n_zohoinvoicelineitem.invoice_id = n_zohoinvoice.invoice_id
+        #     db.add(n_zohoinvoicelineitem)
             
-            db.flush()
+        #     db.flush()
 
-            line_item_taxes = line_item['line_item_taxes']
+        #     line_item_taxes = line_item['line_item_taxes']
 
-            for line_item_tax in line_item_taxes:
-                n_line_item_tax = models.Zoho_Invoice_Line_Item_Tax(**line_item_tax)
-                n_line_item_tax.line_item_id = line_item['line_item_id']
-                db.add(n_line_item_tax)
-                db.flush()
+        #     for line_item_tax in line_item_taxes:
+        #         n_line_item_tax = models.Zoho_Invoice_Line_Item_Tax(**line_item_tax)
+        #         n_line_item_tax.line_item_id = line_item['line_item_id']
+        #         db.add(n_line_item_tax)
+        #         db.flush()
 
         db.commit()
     except Exception as error:

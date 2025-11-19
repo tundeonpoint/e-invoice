@@ -267,7 +267,8 @@ class Zoho_Invoice(Base):
     total = Column(Float,nullable=False)
     created_at = Column(DateTime,default=datetime.now())
     zoho_org_id = Column(String,nullable=False,unique=False)
-    line_items = relationship('Zoho_Invoice_Line_Item',back_populates='invoice')
+    # line_items = relationship('Zoho_Invoice_Line_Item',back_populates='invoice')
+    line_items = Column(JSON,nullable=False)
     sub_total = Column(Float,nullable=False)
     bcy_discount_total = Column(Float,nullable=False)
     bcy_total = Column(Float,nullable=False)
@@ -354,8 +355,8 @@ class Zoho_Invoice_Line_Item(Base):
     tax_percentage = Column(Float,default=0)#: 0,
     expense_id = Column(String,default="")#: ""
 
-    invoice = relationship('Zoho_Invoice',back_populates='line_items')
-    line_item_taxes = relationship('Zoho_Invoice_Line_Item_Tax',back_populates='line_item')
+    # invoice = relationship('Zoho_Invoice',back_populates='line_items')
+    # line_item_taxes = relationship('Zoho_Invoice_Line_Item_Tax',back_populates='line_item')
 
     def __init__(self, **kwargs):
         # Define the fields to include in the constructor
@@ -387,7 +388,7 @@ class Zoho_Invoice_Line_Item_Tax(Base):
     tax_amount_formatted =Column(String)# "NGN900.00",
     tax_percentage = Column(Float,nullable=False)#: 7.5
     tax_id = Column(String,nullable=False)
-    line_item = relationship('Zoho_Invoice_Line_Item',back_populates='line_item_taxes')
+    # line_item = relationship('Zoho_Invoice_Line_Item',back_populates='line_item_taxes')
 
 # while True:
 #     try:
