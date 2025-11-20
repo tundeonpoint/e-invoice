@@ -289,10 +289,12 @@ class Zoho_Invoice(Base):
         "state": "",
         "fax": "",
         "state_code": ""})
+    # full_invoice = Column(JSON)#this is for an experiment to view the entire structure
+    status = Column(String)
 
     def __init__(self, **kwargs):
         # Define the fields to include in the constructor
-        allowed_fields = ['business_id','invoice_id','invoice_number','date','currency_code','tax_type','tax_total','discount_total','total','created_at','zoho_org_id','sub_total','bcy_discount_total','bcy_total','total','due_date','accounting_cost','customer_name','email','customer_default_billing_address','notes','customer_id'] 
+        allowed_fields = ['business_id','invoice_id','invoice_number','date','currency_code','tax_type','tax_total','discount_total','total','created_at','zoho_org_id','sub_total','bcy_discount_total','bcy_total','total','due_date','accounting_cost','customer_name','email','customer_default_billing_address','notes','customer_id','status'] 
     
 
         # Iterate through allowed fields and assign if present in kwargs
