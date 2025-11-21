@@ -45,6 +45,17 @@ def get_org_invoice(inv_id = None,org_id = None,db:Session=Depends(get_db)):
         return result#create_arca_invoice(result,db)
 
     # return f"invoice id {inv_id} returned for {org_id} "
+@router.post("/full_invoice",status_code=status.HTTP_200_OK)
+def post_full_invoice(inv_id = None,org_id = None,db:Session=Depends(get_db)):
+
+    result = db.query(models.Zoho_Invoice).filter(models.Zoho_Invoice.zoho_org_id == org_id).filter(models.Zoho_Invoice.invoice_number == inv_id).first()
+
+    if result == None:
+        return "No invoices found"
+    else:
+        return result#create_arca_invoice(result,db)
+
+    # return f"invoice id {inv_id} returned for {org_id} "
 
 def convert_zoho_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> models.Invoice:
 
@@ -181,7 +192,17 @@ def create_arca_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> dict:
     n_invoice = models.Invoice()
     result = db.query(models.Organisation).filter(models.Organisation.zoho_org_id == zoho_invoice.zoho_org_id).first()
     arca_invoice = {}
-
+    payment_status = ''
+    # capture the payment status value
+    match zoho_invoice.status:
+        case 'paid':
+            payment_status = 'PAID'
+        case 'void':
+            payment_status = 'REJECTED'
+        case 'rejected':
+            payment_status = 'REJECTED'
+        case _:
+            payment_status = 'PENDING'
     # populate the invoice components
     arca_invoice = {
 
@@ -194,7 +215,7 @@ def create_arca_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> dict:
         "invoiceIssueTime": zoho_invoice.date.time(),
         "invoiceTypeCode": "550",
         "invoiceNote":zoho_invoice.notes,
-        "invoicePaymentStatus": "PENDING",
+        "invoicePaymentStatus": payment_status,
         "invoiceTaxPointDate": datetime.now().date(),
         "invoiceDocumentCurrencyCode": zoho_invoice.currency_code,
         "invoiceTaxCurrencyCode": zoho_invoice.currency_code,
@@ -258,15 +279,8 @@ def create_arca_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> dict:
         invoice_line_items.append(
 
             {
-                # "id": idx,  # or item.get("line_item_id") if you prefer Zoho ID
-                "invoiceLineHsnCode": "hsn code placeholder",#item.get("item_id", "UNKNOWN"),  # No explicit HSN in JSON, so using item_id
-                "invoiceLineProductCategory": "product category placeholder",#item.get("item_type_formatted", "General"),
-                # "isic_code": 9999,  # Placeholder: ISIC not in Zoho JSON
-                # "service_category": "service category placeholder",#item.get("name", "Unknown Service"),
-                # "discount_rate": 0.0,
-                # "discount_amount": line_item['discount'],  # Not directly in JSON; can be computed if needed
-                # "fee_rate": 0.0,  # No such field in Zoho JSON
-                # "fee_amount": 0.0,
+                "invoiceLineHsnCode": "hsn code placeholder",#item.get("item_id", "UNKNOWN"),  # 
+                "invoiceLineProductCategory": "product category placeholder",#item.get("item_type_formatted", "General
                 "invoiceLineInvoicedQuantity": line_item['quantity'],#float(item.get("quantity", 0)),
                 "invoiceLineExtensionAmount": line_item['item_total'],#float(item.get("item_total", 0)),
                 "invoiceLineItemName": line_item['name'],
@@ -284,11 +298,7 @@ def create_arca_invoice(zoho_invoice:models.Zoho_Invoice,db:Session) -> dict:
             allowance_charges.append(
             {
                 "invoiceAllowanceChargeIndicator": False,
-                # "allowanceChargeReason": "",
-                # "allowanceChargeReasonCode": "",
                 "invoiceAllowanceChargeAmount": float(discount['discount_amount']),
-                # "allowanceChargeBaseAmount": line_item['sales_rate']*line_item['quantity'],
-                # "allowanceChargeMultiplierFactorNumeric": float(discount['discount_percent'])/100
             }
         )
     # invoice_line_items
@@ -337,7 +347,9 @@ async def create_zoho_invoice(request:Request,invoice:dict,org_id : str = Depend
     n_zohoinvoice.zoho_org_id = org_id
     n_zohoinvoice.business_id = org_info.business_id
     n_zohoinvoice.line_items = invoice["invoice"]["line_items"]
+    # n_zohoinvoice.full_invoice = invoice
 
+    # db.
     try:
         db.add(n_zohoinvoice)
 
@@ -357,35 +369,45 @@ async def create_zoho_invoice(request:Request,invoice:dict,org_id : str = Depend
 
 # async def create_inv_line_item(line_item)
 
-@router.put("/{id}",response_model=schemas.Invoice)
-def update_invoice(id,invoice:schemas.InvoiceCreate,db:Session = Depends(get_db),
-                   current_user:int = Depends(oauth2.get_current_user)):
+@router.put("/{id}",status_code=status.HTTP_202_ACCEPTED)
+def update_invoice(id,invoice:dict,db:Session = Depends(get_db),
+                   org_id : str = Depends(auth.verify_org)):
     
-    try:
-        sp_invoice = db.query(models.Invoice).filter(models.Invoice.irn == id).first()
-    except:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail='Unable to retrieve specified record')
-    
-    if sp_invoice.creator != current_user.id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail='Unauthorised to update this record')
+    n_zohoinvoice = models.Zoho_Invoice(**invoice['invoice'])#assimilate the new invoice data
 
-    try:
-        db.query(models.Invoice).filter(models.Invoice.irn ==
-                                        id).update(invoice.model_dump())
-        db.commit()
-        # db.refresh(invoice)
-        print("****update completed**********")
+    # extract the old invoice record
+    o_zohoinvoice = db.query(models.Zoho_Invoice).filter(models.Zoho_Invoice.invoice_id == id).first()
+    
+    # validate invoice existence and access rights
+    if o_zohoinvoice == None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                             detail='Invoice does not exist.')
+        
+    if org_id != o_zohoinvoice.zoho_org_id:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
+                            detail='Unauthorised to access this invoice.')
 
-    except Exception as error:
-        print(f'*******error details {error}')
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail='Unable to update the specified record')
+    update_count = 0
+    print(invoice['invoice'])
+    for key,value in invoice['invoice'].items():
+        
+        #the try - except block is required since the the zoho_invoice object
+        #won't haveo_zohoinvoice,key all the attributes of the zoho invoice passed in the dictionary
+        if hasattr(o_zohoinvoice,key):
+            try:
+                setattr(o_zohoinvoice,key,value)
+                #add calls to the ARCA update function here
+            except:
+                pass
     
-    upd_invoice = models.Invoice(creator = current_user.id,**invoice.model_dump())
+
     
-    return upd_invoice
+
+    db.commit()
+    #add code to include the updated data to the queue
+    #for sending to ARCA
+
+    return 'Updated Completed'
 
 @router.delete("/{id}",status_code=status.HTTP_204_NO_CONTENT)
 def delete_invoice(id:str,db:Session = Depends(get_db),
@@ -427,6 +449,15 @@ def update_invoice_arca(invoice:dict):
 
     # code for updating invoice status
 
+    # match o_zohoinvoice.status:
+    #     case 'paid':
+    #         o_zohoinvoice.status = 'PAID'
+    #     case 'void':
+    #         o_zohoinvoice.status = 'REJECTED'
+    #     case 'rejected':
+    #         o_zohoinvoice.status = 'REJECTED'
+    #     case _:
+    #         o_zohoinvoice.status = 'PENDING'
     response = {}
 
     return response
