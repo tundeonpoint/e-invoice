@@ -373,10 +373,13 @@ async def create_zoho_invoice(request:Request,invoice:dict,org_id : str = Depend
 def update_invoice(id,invoice:dict,db:Session = Depends(get_db),
                    org_id : str = Depends(auth.verify_org)):
     
-    print(invoice)
+    # print(invoice)
     n_zohoinvoice = models.Zoho_Invoice(**invoice['invoice'])#assimilate the new invoice data
-
     # extract the old invoice record
+    org_info = db.query(models.Organisation).filter(models.Organisation.zoho_org_id == org_id).first()
+    n_zohoinvoice.business_id = org_info.business_id
+    n_zohoinvoice.zoho_org_id = org_id
+    
     o_zohoinvoice = db.query(models.Zoho_Invoice).filter(models.Zoho_Invoice.invoice_id == id).first()
     
     # validate invoice existence and access rights
