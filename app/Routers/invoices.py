@@ -380,30 +380,29 @@ def update_invoice(id,invoice:dict,db:Session = Depends(get_db),
     
     # validate invoice existence and access rights
     if o_zohoinvoice == None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND,
-                             detail='Invoice does not exist.')
-        
-    if org_id != o_zohoinvoice.zoho_org_id:
+        # this scenario captures invoices created prior to implementing
+        # e-invoice integration. these invoices will be created afresh.
+        db.add(n_zohoinvoice)
+        db.commit()
+        submit_invoice_arca(n_zohoinvoice)
+    elif org_id != o_zohoinvoice.zoho_org_id:
+        # attempt at gaining unauthorised access to an invoice 
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,
                             detail='Unauthorised to access this invoice.')
+    else:
 
-    update_count = 0
-    print(invoice['invoice'])
-    for key,value in invoice['invoice'].items():
-        
-        #the try - except block is required since the the zoho_invoice object
-        #won't haveo_zohoinvoice,key all the attributes of the zoho invoice passed in the dictionary
-        if hasattr(o_zohoinvoice,key):
-            try:
-                setattr(o_zohoinvoice,key,value)
-                #add calls to the ARCA update function here
-            except:
-                pass
-    
-
-    
-
-    db.commit()
+        for key,value in invoice['invoice'].items():
+            
+            #the try - except block is required since the the zoho_invoice object
+            #won't haveo_zohoinvoice,key all the attributes of the zoho invoice passed in the dictionary
+            if hasattr(o_zohoinvoice,key):
+                try:
+                    setattr(o_zohoinvoice,key,value)
+                    #add calls to the ARCA update function here
+                except:
+                    pass
+        db.commit()
+        update_invoice_arca(o_zohoinvoice)
     #add code to include the updated data to the queue
     #for sending to ARCA
 
@@ -437,7 +436,7 @@ def delete_invoice(id:str,db:Session = Depends(get_db),
 
 
 
-def submit_invoice_arca(invoice:dict):
+def submit_invoice_arca(invoice:models.Zoho_Invoice):
 
     # code for submission of invoice to arca
 
@@ -445,7 +444,7 @@ def submit_invoice_arca(invoice:dict):
 
     return response
 
-def update_invoice_arca(invoice:dict):
+def update_invoice_arca(invoice:models.Zoho_Invoice):
 
     # code for updating invoice status
 
