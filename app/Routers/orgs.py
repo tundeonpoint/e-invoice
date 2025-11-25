@@ -8,6 +8,7 @@ from typing import List
 from . import oauth2,auth
 import uuid
 from fastapi.security import HTTPBasic,HTTPBasicCredentials
+from ..config import settings
 
 security = HTTPBasic()
 
@@ -82,7 +83,6 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db)):
         new_org.address['lga'] = result_lga.code
         new_org.address['country'] = result_country.code
     except Exception as error:
-        print(f'******new codes:{result_state.code}, {result_lga.code},{result_country}')
         return {"status":"Failed","message":"Error creating organisation.",
         "Exception":str(error)}    
     
@@ -96,7 +96,7 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db)):
                 "Exception":str(error)}
     
     return {"status":"Success","message":"Organisation added successfully.",
-            "Secret Key:":org_secret_plain}
+            "secret_key":org_secret_plain}
 
 @router.get('/validate/{business_id}',status_code=status.HTTP_302_FOUND)
 def validate_business(business_id:str,credentials: HTTPBasicCredentials = Depends(security),
@@ -117,3 +117,23 @@ def regenerate_secret(zoho_id,db:Session=Depends(get_db),
     if auth.verify_org(credentials.username,credentials.password,db) == False:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
     
+@router.get('/regeneratepwd/{cli_id}',status_code=status.HTTP_302_FOUND)
+def regenerate_pwd(cli_id:str,org_id : str = Depends(oauth2.get_current_user),
+                   db:Session = Depends(get_db)) -> str:
+
+    if org_id != settings.zoho_user:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Unauthorised credentials.')
+    
+    try:
+        o_org = db.query(models.Organisation).filter(models.Organisation.zoho_org_id==cli_id).first()
+
+        if o_org == None:
+            return {'status':'failure',
+                    'message':'Unrecognised organisation. Please contact the administrator.'}
+
+        org_secret_plain = str(uuid.uuid4()).replace('-','') #this is for testing
+        o_org.org_secret = utils.hash(org_secret_plain)
+        db.commit()
+        return {'status':'success','password':org_secret_plain}
+    except:
+        return {'status':'failure','message':'Error generating new password. Please try again later.'}

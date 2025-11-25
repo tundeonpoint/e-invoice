@@ -17,12 +17,12 @@ def verify_org(credentials: HTTPBasicCredentials = Depends(security),db = Depend
 
     # client_id = request.headers.get('client_id')
     # client_secret = request.headers.get('client_secret')
-    print(f'*******username:{credentials.username}')
+    # print(f'*******username:{credentials.username}')
     if credentials.username == '' or credentials.password == '':
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials.')
     
     result = db.query(models.Organisation).filter(models.Organisation.zoho_org_id == credentials.username).first()
-    print(f'********password comparison:{utils.verify(result.org_secret,credentials.password)}')
+    # print(f'********password comparison:{utils.verify(result.org_secret,credentials.password)}')
     if result == None or not utils.verify(result.org_secret,credentials.password):      
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials')
     

@@ -10,8 +10,10 @@ from .. import schemas,database,models,utils
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends,HTTPException,status,Header
 from sqlalchemy.orm import Session
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 oauth2_scheme = OAuth2PasswordBearer('auth')
+security = HTTPBasic()
 
 def generate_random_string(length):
     """
@@ -53,35 +55,31 @@ def verify_token(token:str,credential_exception):
     
     return token_data
 
-def get_current_user(token:str = Depends(oauth2_scheme),db:Session = Depends(database.get_db)):
-    credential_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                                         detail='Could not validate credentials',
-                                         headers={'WWW-Authenticate':'Bearer'})
-    
-    new_token = verify_token(token,credential_exception)
+def get_current_user(credentials: HTTPBasicCredentials = Depends(security),
+                     db:Session = Depends(database.get_db)):
 
-    current_user = db.query(models.User).filter(models.User.email == new_token.user_id).first()
+    # client_id = request.headers.get('client_id')
+    # client_secret = request.headers.get('client_secret')
+    # print(f'*******username:{credentials.username}')
+    if credentials.username == '' or credentials.password == '':
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials.')
     
-    return current_user
+    result = db.query(models.Organisation).filter(models.Organisation.zoho_org_id == credentials.username).first()
+    # print(f'********password comparison:{utils.verify(result.org_secret,credentials.password)}')
+    if result == None or not utils.verify(result.org_secret,credentials.password):      
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials')
+    
+    return credentials.username
 
-# def get_current_org(secret_key:str = Header(alias="x-api-key"),token:str = Depends(oauth2_scheme),db:Session = Depends(database.get_db)):
-# def get_current_org(secret_key:str = Header(alias="x-api-key"),db:Session = Depends(database.get_db)):
+
+# def get_current_user(token:str = Depends(oauth2_scheme),db:Session = Depends(database.get_db)):
 #     credential_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
 #                                          detail='Could not validate credentials',
 #                                          headers={'WWW-Authenticate':'Bearer'})
-#     # validate the current org accessing the end point using both the bearer token
-#     # and the secret key. org's zoho id has to match the secret key to be valid.
-#     print(f'******secret key:{secret_key}**********')
+    
 #     new_token = verify_token(token,credential_exception)
 
-#     current_org = db.query(models.Organisation).filter(models.Organisation.zoho_org_id == new_token.user_id).first()
+#     current_user = db.query(models.User).filter(models.User.email == new_token.user_id).first()
+    
+#     return current_user
 
-#     if utils.verify(current_org.org_secret,secret_key) and new_token.user_id == current_org.zoho_org_id:
-
-#         return current_org.zoho_org_id
-    
-#     else:
-        
-#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials.')
-    
-    
