@@ -64,9 +64,9 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security),
     if credentials.username == '' or credentials.password == '':
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials.')
     
-    result = db.query(models.Organisation).filter(models.Organisation.zoho_org_id == credentials.username).first()
+    result = db.query(models.User).filter(models.User.email == credentials.username).first()
     # print(f'********password comparison:{utils.verify(result.org_secret,credentials.password)}')
-    if result == None or not utils.verify(result.org_secret,credentials.password):      
+    if result == None or not utils.verify(result.password,credentials.password):      
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials')
     
     return credentials.username
