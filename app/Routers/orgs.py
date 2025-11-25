@@ -119,7 +119,7 @@ def regenerate_secret(zoho_id,db:Session=Depends(get_db),
     
 @router.get('/regeneratepwd/{cli_id}',status_code=status.HTTP_302_FOUND)
 def regenerate_pwd(cli_id:str,org_id : str = Depends(oauth2.get_current_user),
-                   db:Session = Depends(get_db)) -> str:
+                   db:Session = Depends(get_db)):
 
     if org_id != settings.zoho_user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Unauthorised credentials.')
