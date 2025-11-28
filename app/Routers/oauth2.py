@@ -6,7 +6,7 @@ from datetime import datetime,timedelta
 #not being able to natively serialize datetime into JSON which is a native
 #JSON limitation
 import time
-from .. import schemas,database,models,utils
+from app import schemas,database,models,utils
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends,HTTPException,status,Header
 from sqlalchemy.orm import Session
@@ -71,15 +71,4 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security),
     
     return credentials.username
 
-
-# def get_current_user(token:str = Depends(oauth2_scheme),db:Session = Depends(database.get_db)):
-#     credential_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-#                                          detail='Could not validate credentials',
-#                                          headers={'WWW-Authenticate':'Bearer'})
-    
-#     new_token = verify_token(token,credential_exception)
-
-#     current_user = db.query(models.User).filter(models.User.email == new_token.user_id).first()
-    
-#     return current_user
 

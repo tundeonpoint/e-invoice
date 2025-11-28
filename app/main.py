@@ -28,13 +28,16 @@ def root():
 def header_test(org_id:str = Header('org_id',convert_underscores=False)):
     return {'Organisation':org_id}
 
-@app.get("/testvalidation/{biz_id}")
-def test_validation(biz_id:str):
+@app.post("/arca_endpoint",status_code=status.HTTP_200_OK)
+def test_validation(payload:dict):
 
-    if biz_id != '10001':
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail='Invalid business id')
-    else:
-        return 'Valid business id'
+    # if biz_id != '10001':
+    #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+    #                         detail='Invalid business id')
+    # else:
+    #     return 'Valid business id'
+    # if type(payload) == 'dict':
+    print(payload)
 
+    return "received"
 
