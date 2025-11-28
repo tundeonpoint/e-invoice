@@ -10,9 +10,9 @@ import sys
 import csv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Country_Code,State_Code,LGA_Code  # import your existing model
-from database import get_db
-from config import settings
+from app.models import Country_Code,State_Code,LGA_Code  # import your existing model
+from app.database import get_db
+from app.config import settings
 import pandas as pd
 # ------------------------------------------------------------
 # 1. Database setup
