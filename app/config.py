@@ -13,7 +13,7 @@ class Settings (BaseSettings):
     database_name:str
     secret_key:str
     algorithm:str
-    token_expiration_minutes:str
+    token_expiration_minutes:int
     zoho_user:str
     ap_provider_endpoint:str
 

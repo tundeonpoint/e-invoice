@@ -225,18 +225,20 @@ class CurrencyCreate(BaseModel):
     name_plural : str
 
 class UserCreate(BaseModel):
-    email:EmailStr
+    username:str
     password:str
+    role:str
     
     model_config = ConfigDict(from_attributes=True)
 
 class UserOut(BaseModel):
     id:int
-    email:EmailStr
+    username:str
+    role:str
     created_at:datetime
 
 class UserLogin(BaseModel):
-    email:EmailStr
+    username:str
     password:str
 
 class Token(BaseModel):

@@ -1,14 +1,15 @@
-import sqlalchemy
-import fastapi
+# import sqlalchemy
+# import fastapi
 from fastapi import Depends,HTTPException,status,Response,APIRouter
-from .. import schemas,models,database,utils
-from ..database import get_db
+from app import schemas,models,database,utils
+from app.database import get_db
 from sqlalchemy.orm import Session
 from typing import List
-from . import oauth2,auth
+from Routers import oauth2,auth
 import uuid
 from fastapi.security import HTTPBasic,HTTPBasicCredentials
-from ..config import settings
+from app.config import settings
+from Routers.users import create_user
 
 security = HTTPBasic()
 
@@ -88,13 +89,17 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db)):
     
     try:
         db.add(new_org)
-        db.commit()
+        create_user(schemas.UserCreate(username=new_org.zoho_org_id,
+                                   password=org_secret_plain),db)
+        db.flush()
         # new_org = 
-        db.refresh(new_org)
     except Exception as error:
         return {"status":"Failed","message":"Error creating organisation.",
                 "Exception":str(error)}
+    db.commit()
+    db.refresh(new_org)
     
+
     return {"status":"Success","message":"Organisation added successfully.",
             "secret_key":org_secret_plain}
 

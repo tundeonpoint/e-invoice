@@ -104,8 +104,9 @@ class Country_Code(Base):
 class User(Base):
     __tablename__ = 'users'
     id = Column(Integer,primary_key=True)
-    email = Column(String,nullable=False,unique=True)
+    username = Column(String,nullable=False,unique=True)
     password = Column(String,nullable=False)
+    role = Column(String,nullable=False)
     created_at = Column(DateTime,default=datetime.now())
 
 class Zoho_Invoice(Base):

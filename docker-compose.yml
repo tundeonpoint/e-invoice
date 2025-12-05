@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    # The depends_on only controls the start order, not the readiness
+    depends_on:
+      - postgres
+    ports:
+      - "8000:8000"
+    environment:
+      # ... (Your environment variables here) ...
+      DATABASE_TYPE: postgresql+psycopg2
+      DATABASE_PASSWORD: 0ne4TheM0ney
+      DATABASE_USERNAME: n_user
+      DATABASE_HOSTNAME: postgres # Crucial: Use the service name here
+      DATABASE_NAME: E-Invoice
+      DATABASE_PORTNUMBER: 5432
+      # ... other environment variables ...
+    
+    # Use the script as the entrypoint
+    #entrypoint: /start.sh
+    
+  postgres:
+    image: postgres:15
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: n_user
+      POSTGRES_PASSWORD: 0ne4TheM0ney
+      POSTGRES_DB: E-Invoice
+    ports:
+      - "5433:5432"
+
+volumes:
+  postgres-db:

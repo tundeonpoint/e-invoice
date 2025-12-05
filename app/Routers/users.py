@@ -1,8 +1,8 @@
 import sqlalchemy
-import fastapi
+# import fastapi
 from fastapi import Depends,HTTPException,status,Response,APIRouter
-from .. import schemas,models,database,utils
-from ..database import get_db
+from app import schemas,models,utils
+from app.database import get_db
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -58,7 +58,7 @@ def create_user(user:schemas.UserCreate,db:Session = Depends(get_db)):
         db.commit()
         db.refresh(new_user)
     except sqlalchemy.exc.IntegrityError:
-        print("discovered error")
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
-                            detail="Conflict with existing user data")
+        # print("discovered error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Error creating account.")
     return new_user

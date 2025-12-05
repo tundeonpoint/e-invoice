@@ -32,7 +32,7 @@ def verify_org(credentials: HTTPBasicCredentials = Depends(security),db = Depend
 @router.post('/auth')
 def user_auth(credentials:OAuth2PasswordRequestForm = Depends(),db:Session = Depends(get_db)):
 
-    user = db.query(models.User).filter(models.User.email == credentials.username).first()
+    user = db.query(models.User).filter(models.User.username == credentials.username).first()
 
     if user == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -46,16 +46,33 @@ def user_auth(credentials:OAuth2PasswordRequestForm = Depends(),db:Session = Dep
 
     return {"token" : access_token,"token_type":"bearer"}
 
-@router.post('/org_auth')
-def org_auth(client_id:str = Form(...),client_secret:str = Form(...),
-             db:Session = Depends(get_db)):
+@router.post('/refresh_token')
+def get_refresh_token(credentials:OAuth2PasswordRequestForm = Depends(),db:Session = Depends(get_db)):
 
-    org_id = verify_org(client_id,client_secret,db)
+    user = db.query(models.User).filter(models.User.username == credentials.username).first()
 
-    if org_id == None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail='Invalid credentials.')
+    if user == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Invalid credentials")
     
-    access_token = oauth2.create_access_token({"org_id":org_id})
+    if not utils.verify(user.password,credentials.password):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Invalid credentials")
 
-    return {"token" : access_token,"token_type":"bearer"}
+    refresh_token = oauth2.create_access_token({"user_id":credentials.username})
+    # refresh_token
+    return {"token" : refresh_token,"token_type":"refresh"}
+
+# @router.post('/org_auth')
+# def org_auth(client_id:str = Form(...),client_secret:str = Form(...),
+#              db:Session = Depends(get_db)):
+
+#     org_id = verify_org(client_id,client_secret,db)
+
+#     if org_id == None:
+#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+#                             detail='Invalid credentials.')
+    
+#     access_token = oauth2.create_access_token({"org_id":org_id})
+
+#     return {"token" : access_token,"token_type":"bearer"}
