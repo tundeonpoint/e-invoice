@@ -47,7 +47,7 @@ def create_refresh_token(data:dict):
     exp_time = int(time.mktime(exp_time.timetuple()))
     in_data.update({"exp":exp_time})
     in_data.update({"type":"refresh"})
-    
+
     encoded_data = jwt.encode(in_data,key=settings.secret_key,algorithm=settings.algorithm)
 
     return encoded_data

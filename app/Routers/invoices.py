@@ -224,20 +224,16 @@ def save_zoho_invoice(invoice:dict,db,org_id,send_treatment:int):
 
 
 @router.post("",status_code=status.HTTP_201_CREATED)#,response_model=schemas.Invoice)
-async def create_zoho_invoice(request:Request,invoice:dict,org_id : str = Depends(oauth2.get_current_user),
+async def create_zoho_invoice(request:Request,invoice:dict,org_id : str = Depends(auth.verify_org),
                               db:Session = Depends(get_db)):
     
     arca_invoice = save_zoho_invoice(invoice,db,org_id,send_treatment=1)
 
     return arca_invoice
 
-# @router.post("",status_code=status.HTTP_201_CREATED,response_model=schemas.Invoice)
-
-# async def create_inv_line_item(line_item)
-
 @router.put("/{id}",status_code=status.HTTP_202_ACCEPTED)
 async def update_invoice(id,invoice:dict,db:Session = Depends(get_db),
-                   org_id : str = Depends(oauth2.get_current_user)):
+                   org_id : str = Depends(auth.verify_org)):
 
     result = db.query(models.Zoho_Invoice).filter(models.Zoho_Invoice.zoho_org_id==org_id).filter(models.Zoho_Invoice.invoice_id==id).first()
     

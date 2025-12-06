@@ -1,5 +1,7 @@
-import os
-import sys
+# import os
+# import sys
+import string
+import random
 
 # Force project root as working directory
 # BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -137,6 +139,7 @@ def upload_lgas_from_csv(csv_path: str):
         
     finally:
         session.close()
+
 
 # ------------------------------------------------------------
 # 3. Run the upload

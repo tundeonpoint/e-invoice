@@ -89,8 +89,8 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db)):
     
     try:
         db.add(new_org)
-        create_user(schemas.UserCreate(username=new_org.zoho_org_id,
-                                   password=org_secret_plain),db)
+        # create_user(schemas.UserCreate(username=new_org.zoho_org_id,
+        #                            password=org_secret_plain),db)
         db.flush()
         # new_org = 
     except Exception as error:
