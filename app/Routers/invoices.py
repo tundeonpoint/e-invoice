@@ -237,9 +237,7 @@ async def update_invoice(id,invoice:dict,db:Session = Depends(get_db),
 
     result = db.query(models.Zoho_Invoice).filter(models.Zoho_Invoice.zoho_org_id==org_id).filter(models.Zoho_Invoice.invoice_id==id).first()
     
-    if result == None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND,detail=f'Invoice {id} not found.')
-    
+    # if the invoice doesn't exist, it will be created afresh.
     arca_invoice = save_zoho_invoice(invoice,db,org_id,send_treatment=2)
 
     return arca_invoice
