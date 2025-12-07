@@ -9,12 +9,15 @@ import time
 from app import schemas,database,models,utils
 from app.config import settings
 from fastapi.security import OAuth2PasswordBearer
-from fastapi import Depends,HTTPException,status,Header
+from fastapi import Depends,HTTPException,status,Header,APIRouter
 from sqlalchemy.orm import Session
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.security.oauth2 import OAuth2PasswordRequestForm
+from app.database import get_db
 
 oauth2_scheme = OAuth2PasswordBearer('auth')
 security = HTTPBasic()
+router = APIRouter(tags=['Authentication'])
 
 def generate_random_string(length):
     """
@@ -37,6 +40,24 @@ def create_access_token(data:dict):
     encoded_data = jwt.encode(in_data,key=settings.secret_key,algorithm=settings.algorithm)
 
     return encoded_data
+
+@router.post('/refresh_token')
+def get_refresh_token(credentials:OAuth2PasswordRequestForm = Depends(),db:Session = Depends(get_db)):
+
+    user = db.query(models.User).filter(models.User.username == credentials.username).first()
+
+    if user == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Invalid credentials")
+    
+    if not utils.verify(user.password,credentials.password):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Invalid credentials")
+
+    refresh_token = oauth2.create_access_token({"user_id":credentials.username})
+    # refresh_token
+    return {"token" : refresh_token,"token_type":"refresh"}
+
 
 def create_refresh_token(data:dict):
     in_data = data.copy()
@@ -87,5 +108,3 @@ def get_current_user(token:str = Depends(oauth2_scheme),
                             detail='Error validating authentication credentials.')
 
     
-
-

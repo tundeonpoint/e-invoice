@@ -5,9 +5,9 @@ from app.database import get_db
 from sqlalchemy.orm import Session
 from app import models,utils
 from passlib.hash import pbkdf2_sha256
-from fastapi.security.oauth2 import OAuth2PasswordRequestForm
 from app.Routers import oauth2
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.security.oauth2 import OAuth2PasswordRequestForm
 
 router = APIRouter(tags=['Authentication'])
 
@@ -43,33 +43,16 @@ def user_auth(credentials:OAuth2PasswordRequestForm = Depends(),db:Session = Dep
 
     return {"token" : access_token,"token_type":"bearer"}
 
-@router.post('/refresh_token')
-def get_refresh_token(credentials:OAuth2PasswordRequestForm = Depends(),db:Session = Depends(get_db)):
+def get_current_user_bauth(credentials: HTTPBasicCredentials = Depends(security),
+                           db:Session = Depends(get_db)):
 
-    user = db.query(models.User).filter(models.User.username == credentials.username).first()
-
-    if user == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Invalid credentials")
+    if credentials.username == '' or credentials.password == '':
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials.')
     
-    if not utils.verify(user.password,credentials.password):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Invalid credentials")
+    result = db.query(models.User).filter(models.User.username == credentials.username).first()
 
-    refresh_token = oauth2.create_access_token({"user_id":credentials.username})
-    # refresh_token
-    return {"token" : refresh_token,"token_type":"refresh"}
-
-# @router.post('/org_auth')
-# def org_auth(client_id:str = Form(...),client_secret:str = Form(...),
-#              db:Session = Depends(get_db)):
-
-#     org_id = verify_org(client_id,client_secret,db)
-
-#     if org_id == None:
-#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-#                             detail='Invalid credentials.')
+    if result == None or not utils.verify(result.password,credentials.password):      
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials')
     
-#     access_token = oauth2.create_access_token({"org_id":org_id})
+    return credentials.username
 
-#     return {"token" : access_token,"token_type":"bearer"}

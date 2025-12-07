@@ -61,12 +61,7 @@ def get_org(id:str,db:Session=Depends(get_db),
 
 @router.post('',status_code=status.HTTP_200_OK)
 def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
-               user_id:str = Depends(oauth2.get_current_user)):
-    
-    # if current_user == None:
-    #     raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
-    # if auth.verify_org(credentials.username,credentials.password,db) == False:
-    #     raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
+               org_id:str = Depends(auth.get_current_user_bauth)):
     
     new_org = models.Organisation(**org.model_dump())
 
@@ -86,7 +81,7 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
         new_org.address['country'] = result_country.code
     except Exception as error:
         return {"status":"Failed","message":"Error creating organisation.",
-        "Exception":str(error)}    
+        "Exception":str(error)}
     
     try:
         db.add(new_org)
