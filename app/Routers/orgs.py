@@ -60,7 +60,8 @@ def get_org(id:str,db:Session=Depends(get_db),
     return result
 
 @router.post('',status_code=status.HTTP_200_OK)
-def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db)):
+def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
+               user_id:str = Depends(oauth2.get_current_user)):
     
     # if current_user == None:
     #     raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
