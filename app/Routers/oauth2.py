@@ -54,7 +54,7 @@ def get_refresh_token(credentials:OAuth2PasswordRequestForm = Depends(),db:Sessi
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="Invalid credentials")
 
-    refresh_token = oauth2.create_access_token({"user_id":credentials.username})
+    refresh_token = create_access_token({"user_id":credentials.username})
     # refresh_token
     return {"token" : refresh_token,"token_type":"refresh"}
 

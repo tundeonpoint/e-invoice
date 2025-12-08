@@ -61,9 +61,13 @@ def get_org(id:str,db:Session=Depends(get_db),
 
 @router.post('',status_code=status.HTTP_200_OK)
 def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
-               org_id:str = Depends(auth.get_current_user_bauth)):
+               user_id:str = Depends(auth.get_current_user_bauth)):
     
     new_org = models.Organisation(**org.model_dump())
+
+    if user_id != settings.zoho_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Invalid credentials.')
 
     if not utils.arca_verify_org(new_org):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,

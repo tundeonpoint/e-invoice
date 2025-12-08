@@ -8,6 +8,7 @@ from passlib.hash import pbkdf2_sha256
 from app.Routers import oauth2
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
+from app.config import settings
 
 router = APIRouter(tags=['Authentication'])
 
@@ -46,7 +47,7 @@ def user_auth(credentials:OAuth2PasswordRequestForm = Depends(),db:Session = Dep
 def get_current_user_bauth(credentials: HTTPBasicCredentials = Depends(security),
                            db:Session = Depends(get_db)):
 
-    if credentials.username == '' or credentials.password == '':
+    if credentials.username == '' or credentials.password == '' or credentials.username != settings.zoho_user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials.')
     
     result = db.query(models.User).filter(models.User.username == credentials.username).first()
