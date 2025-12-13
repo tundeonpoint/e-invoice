@@ -3,10 +3,12 @@ import time
 import httpx
 from sqlalchemy import create_engine#, Column, Integer, Boolean, JSON
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
-from app.models import Zoho_Invoice 
+from app.models import Zoho_Invoice,Invoice_Map
 import database
 from fastapi import HTTPException,status
 from Routers import invoices
+from config import settings
+from datetime import datetime
 
 # --------------------------------------------------
 #  DATABASE SETUP
@@ -43,6 +45,7 @@ INTERVAL_SECONDS = 30  # run every 30 seconds
 
 def process_pending_records(db: Session):
     """Selects all records with status=False, sends them to the API, marks sent."""
+    # extract all the records yet to be submitted from the db
     pending = db.query(Zoho_Invoice).filter(Zoho_Invoice.send_status == False).all()
 
     if not pending:
@@ -51,15 +54,18 @@ def process_pending_records(db: Session):
 
     print(f"Found {len(pending)} pending records… sending…")
 
+    # loop through the collection of pending records and send each one
+
     with httpx.Client(timeout=10) as client:
         for record in pending:
             try:
                 send_data = invoices.create_arca_invoice(record,db)
 
                 if record.send_treatment == 1:
-                    response = client.post(API_ENDPOINT, json=send_data)
+                    response = client.post(settings.ap_provider_post_endpoint, json=send_data)
                 elif record.send_treatment == 2:
-                    response = client.post(API_ENDPOINT, json=send_data)
+                    # this should be updated to the PUT endpoint along with the PUT method
+                    response = client.post(settings.ap_provider_post_endpoint, json=send_data)
                 else:
                     raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                                         detail=f'Unknown treatment request for invoice {record.invoice_id}.')
@@ -67,7 +73,16 @@ def process_pending_records(db: Session):
                 if response.status_code == 200:
                     # Mark record as processed
                     record.send_status = True
+                    result = response.json()
+                    map = Invoice_Map()
+                    
+                    map.irn = result["irn"]
+                    map.zoho_invoice_number = record.invoice_number
+                    map.zoho_org_id = record.zoho_org_id
+                    map.submission_date = datetime.now()
+                    db.add(map)
                     db.commit()
+                    # result["irn"]
                     print(f"Record {record.invoice_id} forwarded successfully.")
                 else:
                     print(f"Record {record.invoice_id} failed -> HTTP {response.status_code}")

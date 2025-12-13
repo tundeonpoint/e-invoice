@@ -12,6 +12,7 @@ from sqlalchemy import Date,Time,cast
 import json
 import re
 from datetime import datetime
+import json
 
 router = APIRouter(tags=['Invoices'],
                    prefix="/invoices")
@@ -268,29 +269,25 @@ def delete_invoice(id:str,db:Session = Depends(get_db),
     
     return f"invoice number {id} deleted successfully"
 
+@router.get("/get_sent_invoices",status_code=status.HTTP_302_FOUND)
+def get_sent_invoices(id:str,db:Session = Depends(get_db),
+                   current_user:str = Depends(oauth2.get_current_user)):
+    
+    # retrieve all the invoices that have been sent
+    # but are yet to be retrieved. this ensures we minimise the
+    # amount of data being retrieved on every call.
+    results = db.query(models.Invoice_Map).filter(models.Invoice_Map.retrieve_status == False).all()
 
+    json_result = json.dumps([r.to_dict() for r in results])
 
-def submit_invoice_arca(invoice:models.Zoho_Invoice):
+    try:
+        for result in results:
+            result.retrieve_status = True
+        
+        db.commit()
+    
+    except:
 
-    # code for submission of invoice to arca
-
-    response = {}
-
-    return response
-
-def update_invoice_arca(invoice:models.Zoho_Invoice):
-
-    # code for updating invoice status
-
-    # match o_zohoinvoice.status:
-    #     case 'paid':
-    #         o_zohoinvoice.status = 'PAID'
-    #     case 'void':
-    #         o_zohoinvoice.status = 'REJECTED'
-    #     case 'rejected':
-    #         o_zohoinvoice.status = 'REJECTED'
-    #     case _:
-    #         o_zohoinvoice.status = 'PENDING'
-    response = {}
-
-    return response
+        return {"status":"failed"}
+    
+    return {"status":"success","data":json_result}

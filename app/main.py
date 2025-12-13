@@ -9,6 +9,7 @@ from app import schemas,models,utils
 from typing import List,Annotated
 from .Routers import users,invoice_utils,auth,oauth2,orgs,invoices
 from .schemas import CommonHeaders
+from .key_gen import generate_random_string
 # from database import get_db
 
 app = FastAPI()
@@ -30,7 +31,7 @@ def root():
 
 @app.post("/arca_endpoint",status_code=status.HTTP_200_OK)
 def test_validation(payload:dict):
-
-    print(payload)
-
-    return "received"
+    # this endpoint is to be deleted once we have
+    # the endpoint for the APP
+    rand_string = generate_random_string(7)
+    return {"irn":"irn"+rand_string}

@@ -15,7 +15,8 @@ class Settings (BaseSettings):
     algorithm:str
     token_expiration_minutes:int
     zoho_user:str
-    ap_provider_endpoint:str
+    ap_provider_post_endpoint:str
+    ap_provider_put_endpoint:str
 
     model_config = SettingsConfigDict(env_file=os.path.join(os.path.dirname(__file__), '.env'))
 
