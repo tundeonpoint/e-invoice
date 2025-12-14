@@ -44,16 +44,3 @@ def user_auth(credentials:OAuth2PasswordRequestForm = Depends(),db:Session = Dep
 
     return {"token" : access_token,"token_type":"bearer"}
 
-def get_current_user_bauth(credentials: HTTPBasicCredentials = Depends(security),
-                           db:Session = Depends(get_db)):
-
-    if credentials.username == '' or credentials.password == '' or credentials.username != settings.zoho_user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials.')
-    
-    result = db.query(models.User).filter(models.User.username == credentials.username).first()
-
-    if result == None or not utils.verify(result.password,credentials.password):      
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials')
-    
-    return credentials.username
-

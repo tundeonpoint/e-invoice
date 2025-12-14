@@ -9,14 +9,27 @@ import time
 from app import schemas,database,models,utils
 from app.config import settings
 from fastapi.security import OAuth2PasswordBearer
-from fastapi import Depends,HTTPException,status,Header,APIRouter
-from sqlalchemy.orm import Session
+from fastapi import Depends,HTTPException,status,Request,APIRouter
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session,sessionmaker,declarative_base
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
 from app.database import get_db
+# from config import settings
+# from .auth import get_current_user_bauth
+DATABASE_URL = database.db_url
 
-oauth2_scheme = OAuth2PasswordBearer('auth')
-security = HTTPBasic()
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={} #if "sqlite" in DATABASE_URL else {}
+)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+oauth2_scheme = OAuth2PasswordBearer('auth',auto_error=False)
+basic_scheme = HTTPBasic(auto_error=False)
 router = APIRouter(tags=['Authentication'])
 
 def generate_random_string(length):
@@ -27,6 +40,19 @@ def generate_random_string(length):
     characters = string.ascii_letters + string.digits
     random_string = ''.join(random.choice(characters) for _ in range(length))
     return random_string
+
+def get_current_user_bauth(credentials: HTTPBasicCredentials | None = Depends(basic_scheme),
+                           db:Session = Depends(database.get_db)):
+
+    if credentials.username == '' or credentials.password == '' or credentials.username != settings.zoho_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials.')
+    
+    result = db.query(models.User).filter(models.User.username == credentials.username).first()
+
+    if result == None or not utils.verify(result.password,credentials.password):      
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials')
+    
+    return credentials.username
 
 def create_access_token(data:dict):
     in_data = data.copy()
@@ -107,4 +133,32 @@ def get_current_user(token:str = Depends(oauth2_scheme),
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail='Error validating authentication credentials.')
 
-    
+def get_current_user_multi_auth(
+    request: Request,
+    basic: HTTPBasicCredentials | None = Depends(basic_scheme),
+    token: str | None = Depends(oauth2_scheme),
+):
+    print('******inside decision circle********')
+
+    db = SessionLocal()
+    # 1️⃣ Try OAuth2 first
+    if token:
+        print('******attempting token auth********')
+        user = get_current_user(token,db=db)
+        if user:
+            return user
+
+    # 2️⃣ Fall back to Basic Auth
+    if basic:
+        print('******attempting basic auth********')
+
+        user = get_current_user_bauth(basic,db=db)
+        if user:
+            return user
+
+    # 3️⃣ If both fail
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication credentials",
+        headers={"WWW-Authenticate": "Bearer, Basic"},
+    )    
