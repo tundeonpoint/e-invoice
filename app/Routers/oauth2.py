@@ -44,14 +44,16 @@ def generate_random_string(length):
 def get_current_user_bauth(credentials: HTTPBasicCredentials | None = Depends(basic_scheme),
                            db:Session = Depends(database.get_db)):
 
-    if credentials.username == '' or credentials.password == '' or credentials.username != settings.zoho_user:
+    # print(f'***********username:{credentials.username}')
+    # print(f'***********password:{credentials.password}')
+    if credentials.username == '' or credentials.password == '':
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials.')
-    
+
     result = db.query(models.User).filter(models.User.username == credentials.username).first()
 
+    # print(f'************verification check:{utils.verify(result.password,credentials.password)}')
     if result == None or not utils.verify(result.password,credentials.password):      
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials')
-    
     return credentials.username
 
 def create_access_token(data:dict):
@@ -138,19 +140,19 @@ def get_current_user_multi_auth(
     basic: HTTPBasicCredentials | None = Depends(basic_scheme),
     token: str | None = Depends(oauth2_scheme),
 ):
-    print('******inside decision circle********')
+    # print('******inside decision circle********')
 
     db = SessionLocal()
     # 1️⃣ Try OAuth2 first
     if token:
-        print('******attempting token auth********')
+        # print('******attempting token auth********')
         user = get_current_user(token,db=db)
         if user:
             return user
 
     # 2️⃣ Fall back to Basic Auth
     if basic:
-        print('******attempting basic auth********')
+        # print('******attempting basic auth********')
 
         user = get_current_user_bauth(basic,db=db)
         if user:

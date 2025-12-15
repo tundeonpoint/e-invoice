@@ -64,7 +64,7 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
                user_id:str = Depends(oauth2.get_current_user_multi_auth)):
     
     new_org = models.Organisation(**org.model_dump())
-
+    new_user = models.User()
     if user_id != settings.zoho_user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid credentials.')
@@ -76,7 +76,9 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
     org_secret_plain = str(uuid.uuid4()).replace('-','') #this is for testing
     new_org.org_secret = utils.hash(org_secret_plain)
     new_org.hash_key = str(uuid.uuid4()).replace('-','')
-    
+    new_user.username = new_org.zoho_org_id
+    new_user.password = new_org.hash_key
+    new_user.role = 'org'
     try:
         result_state = db.query(models.State_Code).filter(models.State_Code.name == new_org.address['state']).first()
         result_lga = db.query(models.LGA_Code).filter(models.LGA_Code.name == new_org.address['lga']).filter(models.LGA_Code.state_code == result_state.code).first()
@@ -89,6 +91,7 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
         "Exception":str(error)}
     
     try:
+        db.add(new_user)
         db.add(new_org)
         # create_user(schemas.UserCreate(username=new_org.zoho_org_id,
         #                            password=org_secret_plain),db)
