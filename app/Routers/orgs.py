@@ -121,7 +121,7 @@ def regenerate_secret(zoho_id,db:Session=Depends(get_db),
     #     raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
     if auth.verify_org(credentials.username,credentials.password,db) == False:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
-    
+
 @router.get('/regeneratepwd/{cli_id}',status_code=status.HTTP_302_FOUND)
 def regenerate_pwd(cli_id:str,org_id : str = Depends(oauth2.get_current_user_multi_auth),
                    db:Session = Depends(get_db)):
@@ -140,5 +140,25 @@ def regenerate_pwd(cli_id:str,org_id : str = Depends(oauth2.get_current_user_mul
         o_org.org_secret = utils.hash(org_secret_plain)
         db.commit()
         return {'status':'success','password':org_secret_plain}
+    except:
+        return {'status':'failure','message':'Error generating new password. Please try again later.'}
+
+@router.get('/regeneratehash/{cli_id}',status_code=status.HTTP_302_FOUND)
+def regenerate_hash(cli_id:str,org_id : str = Depends(oauth2.get_current_user_multi_auth),
+                   db:Session = Depends(get_db)):
+
+    if org_id != settings.zoho_user:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Unauthorised credentials.')
+    
+    try:
+        o_org = db.query(models.Organisation).filter(models.Organisation.zoho_org_id==cli_id).first()
+
+        if o_org == None:
+            return {'status':'failure',
+                    'message':'Unrecognised organisation. Please contact the administrator.'}
+
+        o_org.hash_key = str(uuid.uuid4()).replace('-','')
+        db.commit()
+        return {'status':'success','password':o_org.hash_key}
     except:
         return {'status':'failure','message':'Error generating new password. Please try again later.'}

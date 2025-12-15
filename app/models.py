@@ -35,6 +35,8 @@ class Organisation(Base):
             "country": ""})
     invoices = relationship('Zoho_Invoice',back_populates='owner')
     org_secret = Column(String,nullable=False)
+    hash_key = Column(String,nullable=False)
+    
 
 class Currency(Base):
     __tablename__ = 'currencies'
