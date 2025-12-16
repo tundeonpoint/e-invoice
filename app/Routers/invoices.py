@@ -282,7 +282,7 @@ def delete_invoice(id:str,db:Session = Depends(get_db),
 @router.get("/get_sent_invoices",status_code=status.HTTP_200_OK)
 def get_sent_invoices(db:Session = Depends(get_db),
                    current_user:str = Depends(oauth2.get_current_user_multi_auth)):
-    print('*******started function call*********')
+    # print('*******started function call*********')
     
     # retrieve all the invoices that have been sent
     # but are yet to be retrieved. this ensures we minimise the

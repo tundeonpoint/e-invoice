@@ -35,6 +35,7 @@ class Organisation(Base):
             "country": ""})
     invoices = relationship('Zoho_Invoice',back_populates='owner')
     org_secret = Column(String,nullable=False)
+    # the hash key is for examining the signature from zoho
     hash_key = Column(String,nullable=False)
     
 

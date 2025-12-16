@@ -44,14 +44,11 @@ def generate_random_string(length):
 def get_current_user_bauth(credentials: HTTPBasicCredentials | None = Depends(basic_scheme),
                            db:Session = Depends(database.get_db)):
 
-    # print(f'***********username:{credentials.username}')
-    # print(f'***********password:{credentials.password}')
     if credentials.username == '' or credentials.password == '':
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials.')
 
     result = db.query(models.User).filter(models.User.username == credentials.username).first()
 
-    # print(f'************verification check:{utils.verify(result.password,credentials.password)}')
     if result == None or not utils.verify(result.password,credentials.password):      
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Invalid credentials')
     return credentials.username

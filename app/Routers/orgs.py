@@ -76,8 +76,9 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
     org_secret_plain = str(uuid.uuid4()).replace('-','') #this is for testing
     new_org.org_secret = utils.hash(org_secret_plain)
     new_org.hash_key = str(uuid.uuid4()).replace('-','')
+    # create the user account for the org
     new_user.username = new_org.zoho_org_id
-    new_user.password = new_org.hash_key
+    new_user.password = new_org.org_secret
     new_user.role = 'org'
     try:
         result_state = db.query(models.State_Code).filter(models.State_Code.name == new_org.address['state']).first()
