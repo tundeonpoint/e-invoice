@@ -33,7 +33,7 @@ class Organisation(Base):
             "lga": "",
             "state": "",
             "country": ""})
-    invoices = relationship('Zoho_Invoice',back_populates='owner')
+    invoices = relationship('Zoho_Invoice',back_populates='owner',cascade='all,delete-orphan')
     org_secret = Column(String,nullable=False)
     # the hash key is for examining the signature from zoho
     hash_key = Column(String,nullable=False)
@@ -90,7 +90,7 @@ class LGA_Code(Base):
     __tablename__ = 'lga_codes'
     name = Column(String,nullable=False,unique=False)
     code = Column(String,primary_key=True)
-    state_code = Column(String,ForeignKey('state_codes.code'),nullable=False)
+    state_code = Column(String,ForeignKey('state_codes.code',ondelete='CASCADE'),nullable=False)
 
 class State_Code(Base):
     __tablename__ = 'state_codes'
@@ -117,11 +117,11 @@ class Zoho_Invoice(Base):
     # and the same invoice_number because the system will be able to receive updates for
     # each invoice.
     id = Column(Integer,nullable=False,primary_key=True,unique=True)
-    business_id = Column(String,ForeignKey('organisations.business_id'))
+    business_id = Column(String,ForeignKey('organisations.business_id',ondelete='CASCADE'))
     invoice_id = Column(String,nullable=False)
     invoice_number = Column(String,nullable=False)
     date = Column(DateTime,nullable=False)
-    currency_code = Column(String,nullable=False)
+    currency_code = Column(String,ForeignKey('currency.id'),nullable=False)
     tax_type = Column(String,nullable=False,default='tax')
     tax_total = Column(Float,nullable=False,default=0)
     discount_total = Column(Float,nullable=False,default=0)

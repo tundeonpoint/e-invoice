@@ -108,24 +108,64 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
     return {"status":"Success","message":"Organisation added successfully.",
             "secret_key":org_secret_plain}
 
+@router.put('/{org_id}',status_code=status.HTTP_200_OK)
+def update_org(org_id,org:schemas.OrganisationCreate,db:Session=Depends(get_db),
+               user_id:str = Depends(oauth2.get_current_user_multi_auth)):
+    
+    new_org = models.Organisation(**org.model_dump())
+
+    # ensure only the zoho_user account
+    # can make these updates.
+    if user_id != settings.zoho_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Invalid credentials.')
+
+    if not utils.arca_verify_org(new_org):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Invalid organisation information.')
+    
+    try:
+        result = db.query(models.Organisation).filter(models.Organisation.zoho_org_id == org_id).first()
+        result.business_description = new_org.business_description
+        result.email = new_org.email
+        result.name = new_org.name
+        result.rc_number = new_org.rc_number
+        result.telephone = new_org.telephone
+        result.tin = new_org.tin
+        result_state = db.query(models.State_Code).filter(models.State_Code.name == new_org.address['state']).first()
+        result_lga = db.query(models.LGA_Code).filter(models.LGA_Code.name == new_org.address['lga']).filter(models.LGA_Code.state_code == result_state.code).first()
+        result_country = db.query(models.Country_Code).filter(models.Country_Code.name == new_org.address['country']).first()
+        new_org.address['state'] = result_state.code
+        new_org.address['lga'] = result_lga.code
+        new_org.address['country'] = result_country.code
+        result.address = new_org.address
+        db.commit()
+
+        return {"status":"Success","message":"Organisation updated successfully."}
+    except Exception as error:
+        return {"status":"Failed","message":"Error updating organisation.",
+        "Exception":str(error)}
+
 @router.get('/validate/{business_id}',status_code=status.HTTP_302_FOUND)
 def validate_business(business_id:str,credentials: HTTPBasicCredentials = Depends(security),
                       db:Session=Depends(get_db)):
     
-    if not auth.verify_org(credentials.username,credentials.password,db):
+    if not auth.verify_org(credentials,db):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalide credentials.')
     
     return {'username':credentials.username}
 
 
-@router.put('/{zoho_id}',status_code=status.HTTP_200_OK)
-def regenerate_secret(zoho_id,db:Session=Depends(get_db),
-            credentials: HTTPBasicCredentials = Depends(security)):
+# @router.put('/{zoho_id}',status_code=status.HTTP_200_OK)
+# def regenerate_secret(zoho_id,db:Session=Depends(get_db),
+#             credentials: HTTPBasicCredentials = Depends(security),
+#             org_id : str = Depends(oauth2.get_current_user_multi_auth)):
     
-    # if current_user == None:
-    #     raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
-    if auth.verify_org(credentials.username,credentials.password,db) == False:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
+#     # if current_user == None:
+#     #     raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
+#     # oauth2.get_current_user_multi_auth(request=)
+#     if auth.verify_org(credentials,db) == False:
+#         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
 
 @router.get('/regeneratepwd/{cli_id}',status_code=status.HTTP_302_FOUND)
 def regenerate_pwd(cli_id:str,org_id : str = Depends(oauth2.get_current_user_multi_auth),
