@@ -146,6 +146,32 @@ def update_org(org_id,org:schemas.OrganisationCreate,db:Session=Depends(get_db),
         return {"status":"Failed","message":"Error updating organisation.",
         "Exception":str(error)}
 
+@router.delete('/{org_id}',status_code=status.HTTP_202_ACCEPTED)
+def delete_org(org_id,db:Session=Depends(get_db),
+               user_id:str = Depends(oauth2.get_current_user_multi_auth)):
+    
+    if user_id != settings.zoho_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Invalid credentials.')
+    try:
+        org = db.query(models.Organisation).filter(models.Organisation.zoho_org_id == org_id).first()
+        if org == None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND,
+                                detail="Organisation record not found.")
+        db.delete(org)
+
+        # delete associated user account
+        user = db.query(models.User).filter(models.User.username == org_id).first()
+        if user == None:
+            pass
+        else:
+            db.delete(user)
+        db.commit()
+        return {"status":"Success","message":"Organisation deleted successfully."}
+    except Exception as error:
+        return {"status":"Failed","message":"Error deleting organisation.",
+        "Exception":str(error)}
+
 @router.get('/validate/{business_id}',status_code=status.HTTP_302_FOUND)
 def validate_business(business_id:str,credentials: HTTPBasicCredentials = Depends(security),
                       db:Session=Depends(get_db)):

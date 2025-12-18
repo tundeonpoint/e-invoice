@@ -121,7 +121,7 @@ class Zoho_Invoice(Base):
     invoice_id = Column(String,nullable=False)
     invoice_number = Column(String,nullable=False)
     date = Column(DateTime,nullable=False)
-    currency_code = Column(String,ForeignKey('currency.id'),nullable=False)
+    currency_code = Column(String,ForeignKey('currencies.code'),nullable=False)
     tax_type = Column(String,nullable=False,default='tax')
     tax_total = Column(Float,nullable=False,default=0)
     discount_total = Column(Float,nullable=False,default=0)

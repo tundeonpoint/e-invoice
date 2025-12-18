@@ -24,17 +24,6 @@ def get_invoices(db:Session = Depends(get_db),
     # print(f'current user: {current_user.email}')
     return results
 
-# @router.get("/{inv_id}",status_code=status.HTTP_200_OK,response_model=schemas.Invoice)
-# def get_spec_invoices(inv_id,response:Response,
-#                       db:Session = Depends(get_db),org_id : str = Depends(auth.verify_org)):
-#     # get_invoices(par_id)
-#     result = db.query(models.Zoho_Invoice).where(models.Zoho_Invoice.invoice_number==inv_id).where(models.Zoho_Invoice.zoho_org_id==org_id).first()
-#     if result == None:
-#         raise HTTPException(status.HTTP_404_NOT_FOUND,
-#                             detail = f'Invoice number {inv_id} not found')
-    
-#     return result
-
 @router.get("/{inv_id}/orgs/{org_id}",status_code=status.HTTP_200_OK)
 def get_org_invoice(inv_id = None,org_id = None,db:Session=Depends(get_db),
                     current_user:str = Depends(oauth2.get_current_user_multi_auth)):
@@ -226,7 +215,8 @@ def save_zoho_invoice(invoice:dict,db,org_id,send_treatment:int):
 
 
 @router.post("",status_code=status.HTTP_201_CREATED)#,response_model=schemas.Invoice)
-async def create_zoho_invoice(invoice:dict,org_id : str = Depends(oauth2.get_current_user_multi_auth),db:Session = Depends(get_db)):
+async def create_zoho_invoice(invoice:dict,org_id : str = Depends(oauth2.get_current_user_multi_auth),
+                              db:Session = Depends(get_db)):
     
     # check that the org_id is valid
     result = db.query(models.Organisation.zoho_org_id == org_id)

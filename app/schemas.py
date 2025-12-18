@@ -73,6 +73,20 @@ class ZohoInvoiceCreate(BaseModel):
     tax_total : float
     discount_total : float
     total : float
+    zoho_org_id : str
+    line_items : list
+    sub_total : float#= Column(Float,nullable=False)
+    bcy_discount_total : float#= Column(Float,nullable=False)
+    bcy_total : float#= Column(Float,nullable=False)
+    total : float#= Column(Float,nullable=False)
+    due_date : datetime#= Column(Date)
+    accounting_cost : str#= Column(String,default='')
+    customer_name : str#= Column(String,default='')
+    customer_id : str#= Column(String)
+    email : str#= Column(String,default='')
+    notes : str#= Column(String,default='')
+    customer_default_billing_address : dict#= Column(JSON,default={
+
     # currency_code = Column(String,nullable=False)
     # tax_type = Column(String,nullable=False,default='tax')
     # tax_total = Column(Float,nullable=False,default=0)
@@ -112,6 +126,24 @@ class ZohoInvoice(BaseModel):
     discount_total : float
     total : float
     created_at : datetime
+    currency_code : str#= Column(String,nullable=False)
+    tax_type : str#= Column(String,nullable=False,default='tax')
+    tax_total : float#= Column(Float,nullable=False,default=0)
+    discount_total : float#= Column(Float,nullable=False,default=0)
+    total : float#= Column(Float,nullable=False)
+    created_at : datetime#= Column(DateTime,default=datetime.now())
+    zoho_org_id : str#= Column(String,nullable=False,unique=False)
+    line_items : list#= relationship('Zoho_Invoice_Line_Item',back_populates='invoice')
+    sub_total : float#= Column(Float,nullable=False)
+    bcy_discount_total : float#= Column(Float,nullable=False)
+    bcy_total : float#= Column(Float,nullable=False)
+    total : float#= Column(Float,nullable=False)
+    due_date : datetime#= Column(Date)
+    accounting_cost : str#= Column(String,default='')
+    customer_name : str#= Column(String,default='')
+    email : str#= Column(String,default='')
+    customer_default_billing_address : dict#= Column(JSON,default={
+
 
 class ZohoInvoiceLineItem(BaseModel):
     invoice_id : str# Column(String,ForeignKey('zoho_invoices.invoice_id'),nullable=False)
