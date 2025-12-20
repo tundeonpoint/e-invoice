@@ -197,6 +197,8 @@ def validate_business(business_id:str,credentials: HTTPBasicCredentials = Depend
 def regenerate_pwd(cli_id:str,org_id : str = Depends(oauth2.get_current_user_multi_auth),
                    db:Session = Depends(get_db)):
 
+    # ensure this request is being made by the zoho_user account
+    # which is the only account allowed to make this request
     if org_id != settings.zoho_user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Unauthorised credentials.')
     
@@ -209,6 +211,10 @@ def regenerate_pwd(cli_id:str,org_id : str = Depends(oauth2.get_current_user_mul
 
         org_secret_plain = str(uuid.uuid4()).replace('-','') #this is for testing
         o_org.org_secret = utils.hash(org_secret_plain)
+
+        # update the organisation's password
+        o_user = db.query(models.User).filter(models.User.username == cli_id).first()
+        o_user.password = o_org.org_secret
         db.commit()
         return {'status':'success','password':org_secret_plain}
     except:
