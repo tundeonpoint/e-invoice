@@ -193,7 +193,7 @@ def validate_business(business_id:str,credentials: HTTPBasicCredentials = Depend
 #     if auth.verify_org(credentials,db) == False:
 #         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
 
-@router.get('/regeneratepwd/{cli_id}',status_code=status.HTTP_302_FOUND)
+@router.get('/regeneratepwd/{cli_id}',status_code=status.HTTP_200_OK)
 def regenerate_pwd(cli_id:str,org_id : str = Depends(oauth2.get_current_user_multi_auth),
                    db:Session = Depends(get_db)):
 
@@ -220,7 +220,7 @@ def regenerate_pwd(cli_id:str,org_id : str = Depends(oauth2.get_current_user_mul
     except:
         return {'status':'failure','message':'Error generating new password. Please try again later.'}
 
-@router.get('/regeneratehash/{cli_id}',status_code=status.HTTP_302_FOUND)
+@router.get('/regeneratehash/{cli_id}',status_code=status.HTTP_200_OK)
 def regenerate_hash(cli_id:str,org_id : str = Depends(oauth2.get_current_user_multi_auth),
                    db:Session = Depends(get_db)):
 
