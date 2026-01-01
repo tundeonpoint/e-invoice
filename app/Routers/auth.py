@@ -74,6 +74,8 @@ async def callback(code: str, location: str, accounts_server: str):
     Zoho sends 'location' (e.g., 'us', 'eu') and 'accounts-server' 
     back so you know which DC to talk to.
     """
+    print(f"Callback received for DC: {location}, accounts server: {accounts_server}")
+    print(f"Authorization code: {code}")
     # 1. Exchange Grant Code for Tokens
     token_url = f"{accounts_server}/oauth/v2/token"
     async with httpx.AsyncClient() as client:
