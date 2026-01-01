@@ -106,7 +106,9 @@ class User(Base):
     __tablename__ = 'users'
     id = Column(Integer,primary_key=True)
     username = Column(String,nullable=False,unique=True)
-    password = Column(String,nullable=False)
+    password = Column(String,nullable=True)
+    access_token = Column(String,nullable=True)
+    refresh_token = Column(String,nullable=True)
     role = Column(String,nullable=False)
     created_at = Column(DateTime,default=datetime.now())
 

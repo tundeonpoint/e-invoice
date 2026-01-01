@@ -61,7 +61,7 @@ async def login():
     # Multi-DC: Always start auth at the .com domain
     auth_url = (
         f"https://accounts.zoho.com/oauth/v2/auth"
-        f"?scope=ZohoCRM.users.READ,aaaserver.profile.READ"
+        f"?scope=ZohoBooks.settings.READ,aaaserver.profile.READ"#ZohoCRM.users.READ
         f"&client_id={CLIENT_ID}&response_type=code"
         f"&access_type=offline&prompt=consent"
         f"&redirect_uri={REDIRECT_URI}"
@@ -87,14 +87,14 @@ async def callback(code: str, location: str, accounts_server: str = Query(..., a
             "grant_type": "authorization_code"
         })
         tokens = token_res.json()
-        print(f"*******Tokens received: {tokens}")
+        # print(f"*******Tokens received: {tokens}")
         # 2. Get User Info to identify who this is
         user_info_res = await client.get(
             f"{accounts_server}/oauth/user/info",
             headers={"Authorization": f"Zoho-oauthtoken {tokens['access_token']}"}
         )
         user_data = user_info_res.json()
-    print(f"*******User Info received: {user_data}")
+    # print(f"*******User Info received: {user_data}")
     # 3. Encrypt and Store
     zuid = str(user_data["ZUID"])
     encrypted_refresh = encrypt_token(tokens["refresh_token"])
