@@ -1,7 +1,9 @@
 import string
 import random
 import base64
+from .config import settings
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.fernet import Fernet
 
 def generate_random_string(length):
     """
@@ -10,9 +12,15 @@ def generate_random_string(length):
     """
     characters = string.ascii_letters + string.digits
     random_string = ''.join(random.choice(characters) for _ in range(length))
-    upd_random_string = base64.b64encode(random_string.encode()).decode('utf-8')
+    cipher_suite = Fernet(base64.urlsafe_b64encode(settings.secret_key.encode().ljust(32)[:32]))
     print(f"Generated Random String: {random_string}")
-    print(upd_random_string)
+    random_string_bytes = random_string.encode('utf-8')
+    print(f'encoded random_string_bytes: {random_string_bytes}')
+    encrypted_text = cipher_suite.encrypt(random_string_bytes)
+    print(f'encrypted_text: {encrypted_text}')
+    decrypted_text_bytes = cipher_suite.decrypt(encrypted_text)
+    decrypted_text = decrypted_text_bytes.decode('utf-8')
+    print(f'decrypted_text: {decrypted_text}')
     aesgcm = AESGCM(random_string.encode())  # Replace with your actual 32-byte key
     print(f'aesgcm encode output: {aesgcm}')
     return random_string
