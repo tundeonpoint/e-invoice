@@ -1,5 +1,5 @@
 # import fastapi,sqlalchemy
-from fastapi import Depends,HTTPException,status,Response,APIRouter,Form,Request
+from fastapi import Body, Depends,HTTPException,status,Response,APIRouter,Form,Request
 # from app import models,utils
 from app.database import get_db
 from sqlalchemy.orm import Session
@@ -69,7 +69,7 @@ async def login():
     return RedirectResponse(auth_url)
 
 @router.get("/auth/callback")
-async def callback(code: str, location: str, accounts_server: str):
+async def callback(code: str, location: str, accounts_server: str = Body(..., alias="accounts-server")):
     """
     Zoho sends 'location' (e.g., 'us', 'eu') and 'accounts-server' 
     back so you know which DC to talk to.
