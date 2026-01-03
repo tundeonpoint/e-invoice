@@ -82,7 +82,10 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
     # check if the user account for the org already exists
     existing_user = db.query(models.User).filter(models.User.username == new_org.zoho_org_id).first()
     if existing_user != None:
-        existing_user.scope = existing_user.scope['scope'].append(user_id)
+        if existing_user.scope != None:
+            existing_user.scope = existing_user.scope['scope'].append(user_id)
+        else:
+            existing_user.scope = {'scope':[user_id]}
     else:
         new_user.scope = {'scope':[user_id]}
     # create the user account for the org
