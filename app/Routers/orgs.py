@@ -1,6 +1,6 @@
-# import sqlalchemy
+import sqlalchemy
 # import fastapi
-from fastapi import Depends,HTTPException,status,Response,APIRouter
+from fastapi import Depends,HTTPException,status,Request,APIRouter
 from app import schemas,models,database,utils
 from app.database import get_db
 from sqlalchemy.orm import Session
@@ -10,6 +10,8 @@ import uuid
 from fastapi.security import HTTPBasic,HTTPBasicCredentials
 from app.config import settings
 from Routers.users import create_user
+from app.key_gen import generate_random_string
+from app.config import settings
 
 security = HTTPBasic()
 
@@ -239,3 +241,32 @@ def regenerate_hash(cli_id:str,org_id : str = Depends(oauth2.get_current_user_mu
         return {'status':'success','password':o_org.hash_key}
     except:
         return {'status':'failure','message':'Error generating new password. Please try again later.'}
+
+@router.post("/init_org_access/{org_id}",status_code=status.HTTP_201_CREATED)
+def init_org_access(org_id,db:Session = Depends(get_db),request:Request = None):
+
+    # return f"password is {user.password} and length is {len(user.password)}"
+    headers_dict = dict(request.headers)
+    passed_init_key = headers_dict.get('zoho_init_key',None)
+    print(f"all headers received: {request.headers}")
+    print(f"Initialization key received: {passed_init_key}")
+    if passed_init_key == None or passed_init_key != settings.zoho_init_key:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Invalid initialization key.")
+
+    pwd = generate_random_string(64)
+    hashed_password = utils.hash(pwd)
+    # return hashed_password
+    # user.password = hashed_password
+    
+    new_user = models.User(username=org_id,password=hashed_password,role='org')
+
+    try:
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+    except sqlalchemy.exc.IntegrityError:
+        # print("discovered error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Error creating account.")
+    return {"status":"success","password":pwd}

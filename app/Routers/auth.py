@@ -4,7 +4,6 @@ from fastapi import Depends,HTTPException, Query,status,Response,APIRouter,Form,
 from app.database import get_db
 from sqlalchemy.orm import Session
 from app import models,utils
-from passlib.hash import pbkdf2_sha256
 from app.Routers import oauth2
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
@@ -12,6 +11,8 @@ from app.config import settings
 import httpx
 from fastapi.responses import RedirectResponse
 from utils import encrypt_token,decrypt_token
+from database import session as db
+from datetime import time
 
 router = APIRouter(tags=['Authentication'])
 
@@ -96,8 +97,27 @@ async def callback(code: str, location: str, accounts_server: str = Query(..., a
         user_data = user_info_res.json()
     # print(f"*******User Info received: {user_data}")
     # 3. Encrypt and Store
-    zuid = str(user_data["ZUID"])
-    encrypted_refresh = encrypt_token(tokens["refresh_token"])
+    result = db.query(models.User).filter(models.User.username == user_data['Email']).first()
+    if not result:
+        # Create new user
+        new_user = models.User(
+            username=user_data['Email'],
+            password=None,
+            access_token=encrypt_token(tokens['access_token']),
+            refresh_token=encrypt_token(tokens['refresh_token']),
+            token_expires_at=int(time.time()) + tokens['expires_in'],
+            role='user'
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+    else:
+        # Update existing user's tokens
+        result.access_token = tokens['access_token']
+        result.refresh_token = tokens['refresh_token']
+        db.commit()
+    # zuid = str(user_data["ZUID"])
+    # encrypted_refresh = encrypt_token(tokens["refresh_token"])
     
     # logic: db.upsert_user(zuid, email=user_data['Email'], refresh=encrypted_refresh, dc=accounts_server)
     

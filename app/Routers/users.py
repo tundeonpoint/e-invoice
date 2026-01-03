@@ -1,6 +1,6 @@
 import sqlalchemy
 # import fastapi
-from fastapi import Depends,HTTPException,status,Response,APIRouter
+from fastapi import Depends,HTTPException,status,Response,APIRouter,Request
 from app import schemas,models,utils
 from app.database import get_db
 from sqlalchemy.orm import Session
@@ -62,3 +62,4 @@ def create_user(user:schemas.UserCreate,db:Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail="Error creating account.")
     return new_user
+

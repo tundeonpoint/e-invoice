@@ -21,10 +21,10 @@ def generate_random_string(length):
     decrypted_text_bytes = cipher_suite.decrypt(encrypted_text)
     decrypted_text = decrypted_text_bytes.decode('utf-8')
     print(f'decrypted_text: {decrypted_text}')
-    aesgcm = AESGCM(random_string.encode())  # Replace with your actual 32-byte key
-    print(f'aesgcm encode output: {aesgcm}')
+    # aesgcm = AESGCM(random_string.encode())  # Replace with your actual 32-byte key
+    # print(f'aesgcm encode output: {aesgcm}')
     return random_string
 
 if __name__ == "__main__":
     # upload_lgas_from_csv("List_of_LGAs.csv")
-    generate_random_string(32)
+    generate_random_string(128)

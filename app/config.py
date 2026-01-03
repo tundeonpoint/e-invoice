@@ -19,7 +19,8 @@ class Settings (BaseSettings):
     ap_provider_put_endpoint:str
     zoho_api_client_id:str
     zoho_api_client_secret:str
-
+    zoho_init_key:str
+    
     model_config = SettingsConfigDict(env_file=os.path.join(os.path.dirname(__file__), '.env'))
 
 settings = Settings()
