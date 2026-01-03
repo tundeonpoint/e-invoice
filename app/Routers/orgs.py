@@ -246,10 +246,16 @@ def regenerate_hash(cli_id:str,org_id : str = Depends(oauth2.get_current_user_mu
 def init_org_access(org_id,db:Session = Depends(get_db),request:Request = None):
 
     # return f"password is {user.password} and length is {len(user.password)}"
+    # check if org_id exists
+    existing_org = db.query(models.User).filter(models.User.username == org_id).first()
+    if existing_org != None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Organisation account already initialized.")
+    
     headers_dict = dict(request.headers)
     passed_init_key = headers_dict.get('zoho_init_key',None)
-    print(f"all headers received: {request.headers}")
-    print(f"Initialization key received: {passed_init_key}")
+    # print(f"all headers received: {request.headers}")
+    # print(f"Initialization key received: {passed_init_key}")
     if passed_init_key == None or passed_init_key != settings.zoho_init_key:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Invalid initialization key.")
