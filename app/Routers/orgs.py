@@ -67,9 +67,9 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
     
     new_org = models.Organisation(**org.model_dump())
     new_user = models.User()
-    if user_id != settings.zoho_user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail='Invalid credentials.')
+    # if user_id != settings.zoho_user:
+    #     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+    #                         detail='Invalid credentials.')
 
     if not utils.arca_verify_org(new_org):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
@@ -78,7 +78,15 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
     org_secret_plain = str(uuid.uuid4()).replace('-','') #this is for testing
     new_org.org_secret = utils.hash(org_secret_plain)
     new_org.hash_key = str(uuid.uuid4()).replace('-','')
+    
+    # check if the user account for the org already exists
+    existing_user = db.query(models.User).filter(models.User.username == new_org.zoho_org_id).first()
+    if existing_user != None:
+        existing_user.scope = existing_user.scope['scope'].append(user_id)
+    else:
+        new_user.scope = {'scope':[user_id]}
     # create the user account for the org
+
     new_user.username = new_org.zoho_org_id
     new_user.password = new_org.org_secret
     new_user.role = 'org'
@@ -183,17 +191,6 @@ def validate_business(business_id:str,credentials: HTTPBasicCredentials = Depend
     
     return {'username':credentials.username}
 
-
-# @router.put('/{zoho_id}',status_code=status.HTTP_200_OK)
-# def regenerate_secret(zoho_id,db:Session=Depends(get_db),
-#             credentials: HTTPBasicCredentials = Depends(security),
-#             org_id : str = Depends(oauth2.get_current_user_multi_auth)):
-    
-#     # if current_user == None:
-#     #     raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
-#     # oauth2.get_current_user_multi_auth(request=)
-#     if auth.verify_org(credentials,db) == False:
-#         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='User not authenticated.')
 
 @router.get('/regeneratepwd/{cli_id}',status_code=status.HTTP_200_OK)
 def regenerate_pwd(cli_id:str,org_id : str = Depends(oauth2.get_current_user_multi_auth),

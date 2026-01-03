@@ -107,6 +107,7 @@ class User(Base):
     id = Column(Integer,primary_key=True)
     username = Column(String,nullable=False,unique=True)
     password = Column(String,nullable=True)
+    scope = Column(JSON,nullable=True)
     role = Column(String,nullable=False)
     created_at = Column(DateTime,default=datetime.now())
 
