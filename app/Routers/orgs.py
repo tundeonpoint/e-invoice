@@ -102,12 +102,12 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
             
         else:
             existing_user.scope = {'scope':[new_org.zoho_org_id]}
-    else:
-        new_user = models.User()
-        new_user.username = new_org.zoho_org_id
-        new_user.password = new_org.org_secret
-        new_user.role = 'org'
-        new_user.scope = {'scope':[user_id]}
+    # else:
+    new_user = models.User()
+    new_user.username = new_org.zoho_org_id
+    new_user.password = new_org.org_secret
+    new_user.role = 'org'
+    new_user.scope = {'scope':[user_id]}
     # create the user account for the org
 
     try:
@@ -122,8 +122,8 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
         "Exception":str(error)}
     
     try:
-        if existing_user == None:
-            db.add(new_user)
+        # if existing_user == None:
+        db.add(new_user)
         db.add(new_org)
         # create_user(schemas.UserCreate(username=new_org.zoho_org_id,
         #                            password=org_secret_plain),db)
@@ -181,9 +181,21 @@ def update_org(org_id,org:schemas.OrganisationCreate,db:Session=Depends(get_db),
 def delete_org(org_id,db:Session=Depends(get_db),
                user_id:str = Depends(oauth2.get_current_user_multi_auth)):
     
-    if user_id != settings.zoho_user:
+    user_account = db.query(models.User).filter(models.User.username == user_id).first()
+    # ensure the user account exists
+    if user_account == None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid credentials.')
+    
+    # ensure the org_id is in the user's scope
+    if org_id not in user_account.scope.get('scope',[]):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Invalid credentials.')
+
+    # remove the org_id from the user's scope
+    user_account.scope['scope'].remove(org_id)
+    flag_modified(user_account, "scope")
+
     try:
         org = db.query(models.Organisation).filter(models.Organisation.zoho_org_id == org_id).first()
         if org == None:
