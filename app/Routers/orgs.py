@@ -86,28 +86,31 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
         return {"status":"Failed","message":"Error creating organisation. Please try again.",
         "Exception":str(error)}
 
-    # print(f"*****existing user: {existing_user}")
-    # print(f"*****zoho id: {new_org.zoho_org_id}")
-    if existing_user != None:
-        if existing_user.scope != None:
-            # print('*******reached append block')
-            old_scope = existing_user.scope.get('scope',[])
-            # print(f'old scope:{old_scope} old scope type is '+str(type(old_scope)))
-            # print(f'new org id:{new_org.zoho_org_id} new org id type is '+str(type(new_org.zoho_org_id)))
-            old_scope.append(new_org.zoho_org_id)
-            # print(f'new scope:{old_scope}')
-            existing_user.scope = {'scope':old_scope}
-            # print(f'updated existing_user.scope:{existing_user.scope}')
-            flag_modified(existing_user, "scope")
-            
-        else:
-            existing_user.scope = {'scope':[new_org.zoho_org_id]}
+    # update the scope if the user account already is an admin account
+    if 'admin' in user_id:
+        if existing_user != None:
+            if existing_user.scope != None:
+                # print('*******reached append block')
+                old_scope = existing_user.scope.get('scope',[])
+                # print(f'old scope:{old_scope} old scope type is '+str(type(old_scope)))
+                # print(f'new org id:{new_org.zoho_org_id} new org id type is '+str(type(new_org.zoho_org_id)))
+                old_scope.append(new_org.zoho_org_id)
+                # print(f'new scope:{old_scope}')
+                existing_user.scope = {'scope':old_scope}
+                # print(f'updated existing_user.scope:{existing_user.scope}')
+                flag_modified(existing_user, "scope")
+                
+            else:
+                existing_user.scope = {'scope':[new_org.zoho_org_id]}
     # else:
     new_user = models.User()
     new_user.username = new_org.zoho_org_id
     new_user.password = new_org.org_secret
     new_user.role = 'org'
-    new_user.scope = {'scope':[new_org.zoho_org_id]}
+
+    if 'admin' in user_id:
+        new_user.scope = {'scope':[new_org.zoho_org_id]}
+
     # create the user account for the org
 
     try:
