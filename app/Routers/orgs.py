@@ -67,10 +67,7 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
                user_id:str = Depends(oauth2.get_current_user_multi_auth)):
     
     new_org = models.Organisation(**org.model_dump())
-    # if user_id != settings.zoho_user:
-    #     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-    #                         detail='Invalid credentials.')
-    # check if the user account is an admin account
+
     if 'admin' not in user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid credentials.')
@@ -87,15 +84,15 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
     try:
         existing_user = db.query(models.User).filter(models.User.username == user_id).first()
     except Exception as error:
-        return {"status":"Failed","message":"Error creating organisation. Please try again.",
-        "Exception":str(error)}
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Error verifying existing user account.")
 
     # update the scope of the account to include the new org id
     if existing_user != None:
         if existing_user.scope != None:
-            old_scope = existing_user.scope.get('scope',[])
-            old_scope.append(new_org.zoho_org_id)
-            existing_user.scope = {'scope':old_scope}
+            current_scope = (existing_user.scope or {}).get('scope', [])
+            new_scope = current_scope + [new_org.zoho_org_id]
+            existing_user.scope = {'scope':new_scope}
             flag_modified(existing_user, "scope")
             
         else:
@@ -105,6 +102,7 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
     new_user.username = new_org.zoho_org_id
     new_user.password = new_org.org_secret
     new_user.role = 'org'
+    new_user.scope = {'scope':[]}#necessary to prevent memory share issues
 
     try:
         result_state = db.query(models.State_Code).filter(models.State_Code.name == new_org.address['state']).first()
@@ -114,8 +112,8 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
         new_org.address['lga'] = result_lga.code
         new_org.address['country'] = result_country.code
     except Exception as error:
-        return {"status":"Failed","message":"Error creating organisation.",
-        "Exception":str(error)}
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Error verifying organisation address information.")
     
     try:
         db.add(new_user)
@@ -123,8 +121,8 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
         db.flush()
 
     except Exception as error:
-        return {"status":"Failed","message":"Error creating organisation.",
-                "Exception":str(error)}
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Error creating organisation.")
     db.commit()
     db.refresh(new_org)
     
