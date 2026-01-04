@@ -92,12 +92,12 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
         if existing_user.scope != None:
             # print('*******reached append block')
             old_scope = existing_user.scope.get('scope',[])
-            print(f'old scope:{old_scope} old scope type is '+str(type(old_scope)))
-            print(f'new org id:{new_org.zoho_org_id} new org id type is '+str(type(new_org.zoho_org_id)))
+            # print(f'old scope:{old_scope} old scope type is '+str(type(old_scope)))
+            # print(f'new org id:{new_org.zoho_org_id} new org id type is '+str(type(new_org.zoho_org_id)))
             old_scope.append(new_org.zoho_org_id)
-            print(f'new scope:{old_scope}')
+            # print(f'new scope:{old_scope}')
             existing_user.scope = {'scope':old_scope}
-            print(f'updated existing_user.scope:{existing_user.scope}')
+            # print(f'updated existing_user.scope:{existing_user.scope}')
             flag_modified(existing_user, "scope")
             
         else:
@@ -107,7 +107,7 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
     new_user.username = new_org.zoho_org_id
     new_user.password = new_org.org_secret
     new_user.role = 'org'
-    new_user.scope = {'scope':[user_id]}
+    new_user.scope = {'scope':[new_org.zoho_org_id]}
     # create the user account for the org
 
     try:
