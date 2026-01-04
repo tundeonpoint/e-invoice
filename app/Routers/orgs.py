@@ -12,6 +12,7 @@ from app.config import settings
 from Routers.users import create_user
 from app.key_gen import generate_random_string
 from app.config import settings
+from sqlalchemy.orm.attributes import flag_modified
 
 security = HTTPBasic()
 
@@ -66,7 +67,6 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
                user_id:str = Depends(oauth2.get_current_user_multi_auth)):
     
     new_org = models.Organisation(**org.model_dump())
-    new_user = models.User()
     # if user_id != settings.zoho_user:
     #     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
     #                         detail='Invalid credentials.')
@@ -80,19 +80,36 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
     new_org.hash_key = str(uuid.uuid4()).replace('-','')
     
     # check if the user account for the org already exists
-    existing_user = db.query(models.User).filter(models.User.username == new_org.zoho_org_id).first()
+    try:
+        existing_user = db.query(models.User).filter(models.User.username == user_id).first()
+    except Exception as error:
+        return {"status":"Failed","message":"Error creating organisation. Please try again.",
+        "Exception":str(error)}
+
+    # print(f"*****existing user: {existing_user}")
+    # print(f"*****zoho id: {new_org.zoho_org_id}")
     if existing_user != None:
         if existing_user.scope != None:
-            existing_user.scope = existing_user.scope['scope'].append(user_id)
+            # print('*******reached append block')
+            old_scope = existing_user.scope.get('scope',[])
+            print(f'old scope:{old_scope} old scope type is '+str(type(old_scope)))
+            print(f'new org id:{new_org.zoho_org_id} new org id type is '+str(type(new_org.zoho_org_id)))
+            old_scope.append(new_org.zoho_org_id)
+            print(f'new scope:{old_scope}')
+            existing_user.scope = {'scope':old_scope}
+            print(f'updated existing_user.scope:{existing_user.scope}')
+            flag_modified(existing_user, "scope")
+            
         else:
-            existing_user.scope = {'scope':[user_id]}
+            existing_user.scope = {'scope':[new_org.zoho_org_id]}
     else:
+        new_user = models.User()
+        new_user.username = new_org.zoho_org_id
+        new_user.password = new_org.org_secret
+        new_user.role = 'org'
         new_user.scope = {'scope':[user_id]}
     # create the user account for the org
 
-    new_user.username = new_org.zoho_org_id
-    new_user.password = new_org.org_secret
-    new_user.role = 'org'
     try:
         result_state = db.query(models.State_Code).filter(models.State_Code.name == new_org.address['state']).first()
         result_lga = db.query(models.LGA_Code).filter(models.LGA_Code.name == new_org.address['lga']).filter(models.LGA_Code.state_code == result_state.code).first()
@@ -105,7 +122,8 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
         "Exception":str(error)}
     
     try:
-        db.add(new_user)
+        if existing_user == None:
+            db.add(new_user)
         db.add(new_org)
         # create_user(schemas.UserCreate(username=new_org.zoho_org_id,
         #                            password=org_secret_plain),db)
