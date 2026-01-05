@@ -172,6 +172,8 @@ def update_org(org_id,org:schemas.OrganisationCreate,db:Session=Depends(get_db),
 def delete_org(org_id,db:Session=Depends(get_db),
                user_id:str = Depends(oauth2.get_current_user_multi_auth)):
     
+    print(f"delete_org called with org_id: {org_id} by user_id: {user_id}")
+
     try:
         user_account = db.query(models.User).filter(models.User.username == user_id).first()
     except Exception as error:
