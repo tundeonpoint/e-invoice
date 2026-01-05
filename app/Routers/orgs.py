@@ -80,12 +80,13 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
     new_org.org_secret = utils.hash(org_secret_plain)
     new_org.hash_key = str(uuid.uuid4()).replace('-','')
     
-    # check if the user account for the org already exists
+    # check if the user account for the org admin already exists
     try:
         existing_user = db.query(models.User).filter(models.User.username == user_id).first()
+    
     except Exception as error:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail="Error verifying existing user account.")
+                            detail="Error verifying accessing org admin account.")
 
     # update the scope of the account to include the new org id
     if existing_user != None:
@@ -113,7 +114,7 @@ def create_org(org:schemas.OrganisationCreate,db:Session=Depends(get_db),
         new_org.address['country'] = result_country.code
     except Exception as error:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail="Error verifying organisation address information.")
+                            detail="Error creating organisation.")
     
     try:
         db.add(new_user)
@@ -136,9 +137,21 @@ def update_org(org_id,org:schemas.OrganisationCreate,db:Session=Depends(get_db),
     
     new_org = models.Organisation(**org.model_dump())
 
-    # ensure only the zoho_user account
+    # ensure only the org's admin account
     # can make these updates.
-    if user_id != settings.zoho_user:
+    try:
+        user_account = db.query(models.User).filter(models.User.username == user_id).first()
+    except Exception as error:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail='Error validating org admin account.')
+    
+    # ensure the user account exists
+    if user_account == None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Invalid credentials.')
+    
+    # ensure the org_id is in the user's scope
+    if org_id not in user_account.scope.get('scope',[]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid credentials.')
 
@@ -172,8 +185,6 @@ def update_org(org_id,org:schemas.OrganisationCreate,db:Session=Depends(get_db),
 def delete_org(org_id,db:Session=Depends(get_db),
                user_id:str = Depends(oauth2.get_current_user_multi_auth)):
     
-    print(f"delete_org called with org_id: {org_id} by user_id: {user_id}")
-
     try:
         user_account = db.query(models.User).filter(models.User.username == user_id).first()
     except Exception as error:
@@ -182,13 +193,11 @@ def delete_org(org_id,db:Session=Depends(get_db),
     
     # ensure the user account exists
     if user_account == None:
-        print("user_account not found")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid credentials.')
     
     # ensure the org_id is in the user's scope
     if org_id not in user_account.scope.get('scope',[]):
-        print(f"org_id {org_id} not in user_account.scope.get('scope',[])")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid credentials.')
 
@@ -225,59 +234,76 @@ def validate_business(business_id:str,credentials: HTTPBasicCredentials = Depend
     return {'username':credentials.username}
 
 
-@router.get('/regeneratepwd/{cli_id}',status_code=status.HTTP_200_OK)
-def regenerate_pwd(cli_id:str,org_id : str = Depends(oauth2.get_current_user_multi_auth),
+@router.get('/regeneratepwd/{org_id}',status_code=status.HTTP_200_OK)
+def regenerate_pwd(org_id:str,user_id : str = Depends(oauth2.get_current_user_multi_auth),
                    db:Session = Depends(get_db)):
 
-    # ensure this request is being made by the zoho_user account
-    # which is the only account allowed to make this request
-    if org_id != settings.zoho_user:
+    # ensure this request is being made by the correct admin account
+    if 'admin' not in user_id:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Unauthorised credentials.')
     
+    # check if the org is in the current user's scope
     try:
-        o_org = db.query(models.Organisation).filter(models.Organisation.zoho_org_id==cli_id).first()
+        user_account = db.query(models.User).filter(models.User.username == user_id).first()
+        if org_id not in user_account.scope.get('scope',[]):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Unauthorised credentials.')
+    except HTTPException as http_error:
+        # Re-raise the 401 (or 404) so FastAPI can handle it
+        raise http_error
+    except Exception as error:
+        print(str(error))
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail='Error validating user account.')
+    
+    try:
+        o_org = db.query(models.Organisation).filter(models.Organisation.zoho_org_id==org_id).first()
 
         if o_org == None:
-            return {'status':'failure',
-                    'message':'Unrecognised organisation. Please contact the administrator.'}
+            raise HTTPException(status.HTTP_404_NOT_FOUND,
+                                detail='Organisation not found.')
 
         org_secret_plain = str(uuid.uuid4()).replace('-','') #this is for testing
         o_org.org_secret = utils.hash(org_secret_plain)
 
         # update the organisation's password
-        o_user = db.query(models.User).filter(models.User.username == cli_id).first()
+        o_user = db.query(models.User).filter(models.User.username == org_id).first()
         o_user.password = o_org.org_secret
         db.commit()
         return {'status':'success','password':org_secret_plain}
     except:
-        return {'status':'failure','message':'Error generating new password. Please try again later.'}
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail='Error generating new password. Please try again later.')
 
-@router.get('/regeneratehash/{cli_id}',status_code=status.HTTP_200_OK)
-def regenerate_hash(cli_id:str,org_id : str = Depends(oauth2.get_current_user_multi_auth),
-                   db:Session = Depends(get_db)):
+# @router.get('/regeneratehash/{cli_id}',status_code=status.HTTP_200_OK)
+# def regenerate_hash(cli_id:str,org_id : str = Depends(oauth2.get_current_user_multi_auth),
+#                    db:Session = Depends(get_db)):
 
-    if org_id != settings.zoho_user:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Unauthorised credentials.')
+#     if org_id != settings.zoho_user:
+#         raise HTTPException(status.HTTP_401_UNAUTHORIZED,detail='Unauthorised credentials.')
     
-    try:
-        o_org = db.query(models.Organisation).filter(models.Organisation.zoho_org_id==cli_id).first()
+#     try:
+#         o_org = db.query(models.Organisation).filter(models.Organisation.zoho_org_id==cli_id).first()
 
-        if o_org == None:
-            return {'status':'failure',
-                    'message':'Unrecognised organisation. Please contact the administrator.'}
+#         if o_org == None:
+#             return {'status':'failure',
+#                     'message':'Unrecognised organisation. Please contact the administrator.'}
 
-        o_org.hash_key = str(uuid.uuid4()).replace('-','')
-        db.commit()
-        return {'status':'success','password':o_org.hash_key}
-    except:
-        return {'status':'failure','message':'Error generating new password. Please try again later.'}
+#         o_org.hash_key = str(uuid.uuid4()).replace('-','')
+#         db.commit()
+#         return {'status':'success','password':o_org.hash_key}
+#     except:
+#         return {'status':'failure','message':'Error generating new password. Please try again later.'}
 
 @router.post("/init_org_access/{org_id}",status_code=status.HTTP_201_CREATED)
 def init_org_access(org_id,db:Session = Depends(get_db),request:Request = None):
 
     # return f"password is {user.password} and length is {len(user.password)}"
     # check if org_id exists
-    existing_org = db.query(models.User).filter(models.User.username == org_id).first()
+    try:
+        existing_org = db.query(models.Organisation).filter(models.Organisation.zoho_org_id == org_id).first()
+    except Exception as error:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Error verifying organisation admin account.")
     if existing_org != None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Organisation account already initialized.")
