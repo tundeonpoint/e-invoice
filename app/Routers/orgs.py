@@ -172,14 +172,21 @@ def update_org(org_id,org:schemas.OrganisationCreate,db:Session=Depends(get_db),
 def delete_org(org_id,db:Session=Depends(get_db),
                user_id:str = Depends(oauth2.get_current_user_multi_auth)):
     
-    user_account = db.query(models.User).filter(models.User.username == user_id).first()
+    try:
+        user_account = db.query(models.User).filter(models.User.username == user_id).first()
+    except Exception as error:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail='Error validating user account.')
+    
     # ensure the user account exists
     if user_account == None:
+        print("user_account not found")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid credentials.')
     
     # ensure the org_id is in the user's scope
     if org_id not in user_account.scope.get('scope',[]):
+        print(f"org_id {org_id} not in user_account.scope.get('scope',[])")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid credentials.')
 
@@ -203,9 +210,9 @@ def delete_org(org_id,db:Session=Depends(get_db),
         db.commit()
         return {"status":"Success","message":"Organisation deleted successfully."}
     except Exception as error:
-        return {"status":"Failed","message":"Error deleting organisation.",
-        "Exception":str(error)}
-
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Error deleting organisation.")
+    
 @router.get('/validate/{business_id}',status_code=status.HTTP_302_FOUND)
 def validate_business(business_id:str,credentials: HTTPBasicCredentials = Depends(security),
                       db:Session=Depends(get_db)):

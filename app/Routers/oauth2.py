@@ -149,8 +149,6 @@ def get_current_user_multi_auth(
 
     # 2️⃣ Fall back to Basic Auth
     if basic:
-        print('******attempting basic auth********')
-        print(f'****username:{basic.username}')
         user = get_current_user_bauth(basic,db=db)
         if user:
             return user
