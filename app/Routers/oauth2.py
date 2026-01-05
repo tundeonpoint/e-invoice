@@ -142,7 +142,7 @@ def get_current_user_multi_auth(
     db = SessionLocal()
     # 1️⃣ Try OAuth2 first
     if token:
-        # print('******attempting token auth********')
+        print(f'******token: {str(token)}********')
         user = get_current_user(token,db=db)
         if user:
             return user
